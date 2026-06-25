@@ -111,3 +111,53 @@ Practical checklist for any change impacting core logic or public APIs
 ## Branding / White-labeling note
 
 - For user-facing strings that currently contain "Chatwoot" but should adapt to branded/self-hosted installs, prefer applying `replaceInstallationName` from `shared/composables/useBranding` in the UI layer (for example tooltip and suggestion labels) instead of adding hardcoded brand-specific copy.
+
+## graphify
+
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+
+Rules:
+- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- Do NOT read graphify-out/graph.json directly — it is large raw JSON; use graphify CLI commands instead.
+- After significant code changes or before committing a completed feature/fix, run `scripts/ai-task --update-graph` to keep the graph current. Do not rebuild the graph after every tiny edit.
+
+## AI Task Workflow
+
+Use `scripts/ai-task` to manage the knowledge graph lifecycle before AI-assisted tasks.
+
+- `scripts/ai-task` — Check graph status; build if missing (AST-only, no LLM cost)
+- `scripts/ai-task --update-graph` — Force rebuild after significant code changes
+- `scripts/ai-task -- bundle exec rspec spec/...` — Ensure graph fresh, then run
+
+**Graph-first exploration rules:**
+1. If `graphify-out/graph.json` exists, use `graphify query/path/explain` before reading raw files
+2. Read `graphify-out/GRAPH_REPORT.md` only for initial broad architecture orientation
+3. Do not read `graph.json` directly — it can exceed 100 MB
+4. Inspect only files relevant to the task; avoid full-directory reads
+5. Run targeted tests only (`rspec spec/path/to/file_spec.rb`) — never the full suite unless asked
+
+## Caveman-Style Final Reports
+
+End every completed task with a compact report — no prose padding:
+
+```
+## Done
+- Files changed: <list>
+- Tests run: <command> → <result>
+- Risks: <one line or "none">
+```
+
+Do not write multi-paragraph summaries. One bullet per item. If nothing changed, say so in one line.
+
+## Custom Behdashtik Modules
+
+This repository contains custom Behdashtik overlays that are **not upstream Chatwoot**. Do not confuse them with core Chatwoot functionality, and do not remove or refactor them as dead code.
+
+### Visitor Journey Tracking
+Records dev website page visits as private/internal notes in the active Chatwoot conversation.
+- Full docs: `docs/behdashtik-visitor-journey-tracking.md`
+- Module files: `app/controllers/api/v1/behdashtik/`, `app/services/behdashtik/`, `public/js/behdashtik-journey-tracker.js`
+- Requires WordPress dev plugin (committed separately to `jolfaguy12-cell/wp-plugin`)
+- **DEV only** (`dev.behdashtik.ir`). Production must not be enabled without explicit approval.

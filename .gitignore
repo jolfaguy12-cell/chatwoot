@@ -104,3 +104,10 @@ CLAUDE.local.md
 .pnpm-store/*
 local/
 Procfile.worktree
+
+# AI workflow — Graphify knowledge graph (large files, machine-generated)
+graphify-out/graph.json
+graphify-out/manifest.json
+graphify-out/cache/
+graphify-out/*.html
+graphify-out/*.svg

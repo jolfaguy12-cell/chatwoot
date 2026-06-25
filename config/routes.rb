@@ -476,6 +476,11 @@ Rails.application.routes.draw do
           end
         end
       end
+
+      # Behdashtik custom module: Visitor Journey Tracking
+      namespace :behdashtik do
+        resources :journey_events, only: [:create]
+      end
     end
 
     namespace :v2 do
@@ -516,6 +521,7 @@ Rails.application.routes.draw do
           end
         end
       end
+
     end
   end
 

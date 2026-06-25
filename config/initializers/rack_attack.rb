@@ -257,6 +257,11 @@ class Rack::Attack
   end
 
   ## ----------------------------------------------- ##
+
+  # Behdashtik: Visitor Journey Tracking endpoint — 60 requests/min per IP
+  throttle('behdashtik/journey_events', limit: 60, period: 1.minute) do |req|
+    req.remote_ip if req.path.start_with?('/api/v1/behdashtik/journey') && req.post?
+  end
 end
 
 # Log blocked events

@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+# scripts/ai-task — Lightweight AI task runner for Chatwoot (DEV only)
+#
+# Usage:
+#   scripts/ai-task [--update-graph] [-- <command>]
+#   scripts/ai-task --update-graph          # force graph rebuild then exit
+#   scripts/ai-task -- bundle exec rspec ... # ensure graph is fresh, then run
+#   scripts/ai-task                         # just ensure graph is ready, print status
+#
+# The graph is only built/updated when:
+#   1. graphify-out/graph.json does not exist, OR
+#   2. --update-graph flag is passed
+
+set -euo pipefail
+
+GRAPH_DIR="graphify-out"
+GRAPH_JSON="$GRAPH_DIR/graph.json"
+UPDATE_GRAPH=false
+PASSTHROUGH_CMD=()
+
+# Parse args
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --update-graph) UPDATE_GRAPH=true; shift ;;
+    --) shift; PASSTHROUGH_CMD=("$@"); break ;;
+    -h|--help)
+      echo "Usage: scripts/ai-task [--update-graph] [-- <command>]"
+      echo ""
+      echo "  --update-graph    Force rebuild of graphify-out/graph.json (AST-only, no LLM)"
+      echo "  -- <command>      Run a command after ensuring graph is current"
+      echo ""
+      echo "Graph status:"
+      if [ -f "$GRAPH_JSON" ]; then
+        echo "  graphify-out/graph.json exists ($(du -sh "$GRAPH_JSON" 2>/dev/null | cut -f1))"
+        echo "  GRAPH_REPORT.md: $([ -f "$GRAPH_DIR/GRAPH_REPORT.md" ] && echo 'present' || echo 'missing')"
+      else
+        echo "  No graph built yet — run: scripts/ai-task --update-graph"
+      fi
+      exit 0
+      ;;
+    *) echo "Unknown argument: $1" >&2; exit 1 ;;
+  esac
+done
+
+# Ensure graphify is available
+if ! command -v graphify &>/dev/null; then
+  echo "[ai-task] WARNING: graphify not found in PATH. Skipping graph step." >&2
+  if [ ${#PASSTHROUGH_CMD[@]} -gt 0 ]; then
+    exec "${PASSTHROUGH_CMD[@]}"
+  fi
+  exit 0
+fi
+
+# Build or update graph if needed
+if [ "$UPDATE_GRAPH" = true ] || [ ! -f "$GRAPH_JSON" ]; then
+  if [ "$UPDATE_GRAPH" = true ]; then
+    echo "[ai-task] --update-graph: rebuilding graph (AST-only, no LLM cost)..."
+  else
+    echo "[ai-task] graphify-out/graph.json missing — building initial graph (AST-only)..."
+  fi
+
+  # AST-only, no clustering, no LLM API calls
+  graphify update . --no-cluster
+
+  echo "[ai-task] Graph ready: $GRAPH_JSON"
+  if [ -f "$GRAPH_DIR/GRAPH_REPORT.md" ]; then
+    echo "[ai-task] GRAPH_REPORT.md updated."
+  fi
+else
+  echo "[ai-task] Graph exists — skipping rebuild. Use --update-graph to refresh."
+fi
+
+# Run passthrough command if provided
+if [ ${#PASSTHROUGH_CMD[@]} -gt 0 ]; then
+  exec "${PASSTHROUGH_CMD[@]}"
+fi
