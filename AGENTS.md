@@ -147,6 +147,17 @@ Records dev-website page visits as private notes on the active conversation.
 - Needs the WordPress plugin (separate repo: `jolfaguy12-cell/wp-plugin`)
 - **DEV only** (`dev.behdashtik.ir`). Do not enable in production without explicit approval.
 
+### Widget Channel Links
+Shortcut cards on the widget home screen (Telegram, Rubika, Eitaa, SMS, phone …), managed per inbox from **Settings → Inboxes → Channel Links**.
+- Stored in `channel_web_widgets.channel_links` (jsonb), permitted through `Channel::WebWidget::EDITABLE_ATTRS`, served to the widget via `channelLinks` in `app/views/widgets/show.html.erb`.
+- Icons live in `app/javascript/widget/helpers/channelLinkIcons.js`. Rubika, Eitaa and Bale use a neutral chat glyph in the brand colour — swap in real artwork when available.
+- A `url` of `tel:` or `sms:` works, not just http.
+
+### Iranian Phone Numbers
+- `app/javascript/shared/helpers/iranPhone.js` normalises any input (Persian/Arabic digits, `+98`, `0098`, `98`, `09`, `9`) to E.164 `+989XXXXXXXXX`.
+- This is not cosmetic: `Contact#phone_number_format` **silently reverts** any value that is not E.164, so an un-normalised number is dropped without an error.
+- The widget pre-chat form uses a plain `tel` input with the `isIranMobile` FormKit rule (registered in `app/javascript/entrypoints/widget.js`); the upstream country-code picker is bypassed.
+
 ### Widget Launcher and Font
 - `public/fonts/iransans/` plus the `<style>` block in `app/views/widgets/show.html.erb` render the widget UI in IRANSansXFaNum. The block must stay **after** the Vite tags to win over Tailwind preflight.
 - Launcher appearance (shape, brand color, icon, pulse, mobile offset) is overridden from the WordPress side, not here — see the `wp-plugin` repo. Keeping it there survives Chatwoot upgrades.
