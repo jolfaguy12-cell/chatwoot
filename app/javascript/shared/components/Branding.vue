@@ -34,6 +34,11 @@ export default {
       try {
         const referrerHost = this.$store.getters['appConfig/getReferrerHost'];
         const url = new URL(this.globalConfig.widgetBrandURL);
+        // tel:/mailto: links are not hierarchical — appending UTM params turns
+        // them into a number the dialer cannot parse.
+        if (!['http:', 'https:'].includes(url.protocol)) {
+          return this.globalConfig.widgetBrandURL;
+        }
         if (referrerHost) {
           url.searchParams.set('utm_source', referrerHost);
           url.searchParams.set('utm_medium', 'widget');
