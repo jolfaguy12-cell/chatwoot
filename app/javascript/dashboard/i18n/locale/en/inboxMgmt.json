@@ -914,6 +914,7 @@
       "ICON": "Icon",
       "COLOR": "Color",
       "COLOR_PLACEHOLDER": "Icon color, defaults to the brand's",
+      "VISIBLE": "Visible",
       "EMPTY": "No channel links yet.",
       "ADD": "Add link",
       "SAVE": "Save"

@@ -37,7 +37,7 @@ class Channel::WebWidget < ApplicationRecord
                                               { pre_chat_fields:
                                                 [:field_type, :label, :placeholder, :name, :enabled, :type, :enabled, :required,
                                                  :locale, { values: [] }, :regex_pattern, :regex_cue] }] },
-                    { channel_links: [:label, :url, :icon, :color] },
+                    { channel_links: [:label, :url, :icon, :color, :enabled] },
                     { selected_feature_flags: [] }].freeze
 
   before_validation :validate_pre_chat_options

@@ -6,8 +6,11 @@ const props = defineProps({
   links: { type: Array, default: () => [] },
 });
 
+// `enabled` is absent on links saved before the toggle existed — treat those as visible
 const visibleLinks = computed(() =>
-  props.links.filter(link => link && link.label && link.url)
+  props.links.filter(
+    link => link && link.label && link.url && link.enabled !== false
+  )
 );
 
 const iconFor = link =>

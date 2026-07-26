@@ -22,12 +22,22 @@ const links = ref([]);
 
 const setDefaults = () => {
   const { channel_links: channelLinks = [] } = props.inbox;
-  // Clone so edits stay local until the form is saved
-  links.value = (channelLinks || []).map(link => ({ ...link }));
+  // Clone so edits stay local until the form is saved.
+  // `enabled` is absent on links saved before the toggle existed — default them to visible.
+  links.value = (channelLinks || []).map(link => ({
+    ...link,
+    enabled: link.enabled !== false,
+  }));
 };
 
 const addLink = () => {
-  links.value.push({ label: '', url: '', icon: 'generic', color: '' });
+  links.value.push({
+    label: '',
+    url: '',
+    icon: 'generic',
+    color: '',
+    enabled: true,
+  });
 };
 
 const removeLink = index => {
@@ -109,6 +119,11 @@ watch(() => props.inbox.id, setDefaults);
             class="mb-0"
             :placeholder="$t('INBOX_MGMT.CHANNEL_LINKS.COLOR_PLACEHOLDER')"
           />
+        </label>
+
+        <label class="flex items-center gap-2 mb-0 text-sm pb-1.5">
+          <input v-model="link.enabled" type="checkbox" class="mb-0" />
+          {{ $t('INBOX_MGMT.CHANNEL_LINKS.VISIBLE') }}
         </label>
 
         <div class="flex items-center gap-1 pb-1">
