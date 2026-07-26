@@ -123,7 +123,10 @@
 }
 
 .unread-messages {
-  @apply flex flex-col flex-nowrap mt-0 overflow-y-auto w-full pb-2;
+  // getExtraSpaceToScroll sizes the iframe to fit the cards so this never
+  // scrolls, but long messages can still overflow it. Keep the scrolling and
+  // drop the scrollbar chrome — it renders over the transparent page area.
+  @apply flex flex-col flex-nowrap mt-0 overflow-y-auto w-full pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden;
 
   .chat-bubble-wrap {
     @apply mb-1;
@@ -149,7 +152,9 @@
 }
 
 .is-widget-right .unread-wrap {
-  @apply ltr:text-right rtl:text-left overflow-hidden;
+  // The widget is anchored to the right edge of the screen, so the unread
+  // cards hug that edge regardless of the locale's text direction.
+  @apply text-right overflow-hidden;
 
   .chat-bubble-wrap {
     .chat-bubble {

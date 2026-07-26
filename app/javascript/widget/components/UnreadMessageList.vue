@@ -56,11 +56,11 @@ export default {
 </script>
 
 <template>
-  <div class="unread-wrap" dir="ltr">
+  <div class="unread-wrap">
     <div class="close-unread-wrap">
       <button class="button small close-unread-button" @click="closeFullView">
         <span class="flex items-center">
-          <FluentIcon class="mr-1" icon="dismiss" size="12" />
+          <FluentIcon class="me-1" icon="dismiss" size="12" />
           {{ $t('UNREAD_VIEW.CLOSE_MESSAGES_BUTTON') }}
         </span>
       </button>
@@ -93,7 +93,11 @@ export default {
             color: widgetColor,
           }"
         >
-          <FluentIcon class="mr-2" size="16" icon="arrow-right" />
+          <FluentIcon
+            class="me-2 rtl:rotate-180"
+            size="16"
+            icon="arrow-right"
+          />
           {{ $t('UNREAD_VIEW.VIEW_MESSAGES_BUTTON') }}
         </span>
       </button>
@@ -104,7 +108,12 @@ export default {
 <style lang="scss" scoped>
 .unread-wrap {
   width: 100%;
-  height: auto;
+  // Fill the iframe rather than hugging the content: `.is-mobile` forces the
+  // root container to `display: block`, so its `justify-end` cannot bottom
+  // align this on mobile and the cards drift away from the launcher. Owning
+  // the full height lets this element's own `justify-content: flex-end` do it
+  // in both layouts, leaving the slack above the cards where it is invisible.
+  height: 100%;
   max-height: 100vh;
   background: transparent;
   display: flex;
@@ -119,7 +128,9 @@ export default {
 
   .clear-button {
     transition: all 0.3s cubic-bezier(0.17, 0.67, 0.83, 0.67);
-    @apply bg-transparent text-n-brand border-none border-0 font-semibold text-base ml-1 py-0 pl-0 pr-2.5 hover:brightness-75 hover:translate-x-1;
+    // Padding stays physical: the widget hugs the right edge in every locale,
+    // so the breathing room always belongs on the right.
+    @apply bg-transparent text-n-brand border-none border-0 font-semibold text-base ml-1 py-0 pl-0 pr-2.5 hover:brightness-75 hover:translate-x-1 rtl:hover:-translate-x-1;
   }
 
   .close-unread-button {

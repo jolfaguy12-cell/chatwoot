@@ -119,14 +119,14 @@ export default {
 }
 
 .row--agent-block {
-  @apply items-center flex text-left pb-2 text-xs;
+  @apply items-center flex text-start pb-2 text-xs;
 
   .agent--name {
-    @apply font-medium ml-1;
+    @apply font-medium ms-1;
   }
 
   .company--name {
-    @apply text-n-slate-11 dark:text-n-slate-10 ml-1;
+    @apply text-n-slate-11 dark:text-n-slate-10 ms-1;
   }
 }
 </style>
