@@ -1,146 +1,133 @@
-# Chatwoot Development Guidelines
+# Chatwoot / Behdashtik — Agent Guidelines
+
+Read by Codex (`AGENTS.md`) and Claude Code (`CLAUDE.md`, a symlink to this file). One source of truth — edit here.
+
+## Environment (this install)
+
+This checkout is **not** a stock local dev setup — it is the live Behdashtik deployment. There is no Ruby, Bundler, rbenv, Overmind, or installed `node_modules` on the host; the repo is bind-mounted into containers at `/app`.
+
+| Service | Container | Notes |
+|---|---|---|
+| Rails (Puma) | `chatwoot-rails-1` | `RAILS_ENV=production`, host port 4000 |
+| Sidekiq | `chatwoot-sidekiq-1` | |
+| Redis | `chatwoot-redis-1` | password protected, bound to `127.0.0.1` |
+| Postgres | `chatwoot-postgres-1` | pgvector/pg16, bound to `127.0.0.1` |
+
+Public URL: `support.behdashtik.ir` (nginx → `127.0.0.1:4000`, with a `/cable` upgrade block).
+
+Run every Ruby/Node command inside the container:
+
+```bash
+docker exec chatwoot-rails-1 bundle exec rspec spec/path/to/file_spec.rb
+docker exec chatwoot-rails-1 bundle exec rubocop -a app/models/foo.rb
+docker exec chatwoot-rails-1 bundle exec rails runner '...'
+docker exec chatwoot-rails-1 sh -c "cd /app && npx eslint app/javascript/path/to/File.vue"
+```
+
+**Applying changes:**
+- `.erb` views, Ruby code → `docker restart chatwoot-rails-1` (no build needed).
+- JS / Vue / SCSS → rebuild first, then restart:
+  ```bash
+  docker exec chatwoot-rails-1 sh -c "cd /app && RAILS_ENV=production NODE_ENV=production bin/vite build"
+  docker restart chatwoot-rails-1
+  ```
+  Rails takes ~10–60s to come back; poll the URL instead of assuming.
+- Assets land in `public/vite/assets/` (gitignored). Stale bundles from earlier builds stay behind — confirm which one is live by grepping the served page for the hashed filename.
+
+**Committing:** the husky pre-commit hook runs `lint-staged`, which is not installed on the host and will fail. Lint the changed files in the container (above), then commit with `--no-verify`. Do not skip the lint itself.
 
 ## Build / Test / Lint
 
-- **Setup**: `bundle install && pnpm install`
-- **Run Dev**: `pnpm dev` or `overmind start -f ./Procfile.dev`
-- **Seed Local Test Data**: `bundle exec rails db:seed` (quickly populates minimal data for standard feature verification)
-- **Seed Search Test Data**: `bundle exec rails search:setup_test_data` (bulk fixture generation for search/performance/manual load scenarios)
-- **Seed Account Sample Data (richer test data)**: `Seeders::AccountSeeder` is available as an internal utility and is exposed through Super Admin `Accounts#seed`, but can be used directly in dev workflows too:
-  - UI path: Super Admin → Accounts → Seed (enqueues `Internal::SeedAccountJob`).
-  - CLI path: `bundle exec rails runner "Internal::SeedAccountJob.perform_now(Account.find(<id>))"` (or call `Seeders::AccountSeeder.new(account: Account.find(<id>)).perform!` directly).
+- **Setup** (fresh clone only): `bundle install && pnpm install`
+- **Seed minimal test data**: `bundle exec rails db:seed`
+- **Seed search/perf fixtures**: `bundle exec rails search:setup_test_data`
+- **Seed richer account data**: `bundle exec rails runner "Internal::SeedAccountJob.perform_now(Account.find(<id>))"` (also exposed as Super Admin → Accounts → Seed)
 - **Lint JS/Vue**: `pnpm eslint` / `pnpm eslint:fix`
 - **Lint Ruby**: `bundle exec rubocop -a`
 - **Test JS**: `pnpm test` or `pnpm test:watch`
-- **Test Ruby**: `bundle exec rspec spec/path/to/file_spec.rb`
-- **Single Test**: `bundle exec rspec spec/path/to/file_spec.rb:LINE_NUMBER`
-- **Run Project**: `overmind start -f Procfile.dev`
-- **Ruby Version**: Manage Ruby via `rbenv` and install the version listed in `.ruby-version` (e.g., `rbenv install $(cat .ruby-version)`)
-- **rbenv setup**: Before running any `bundle` or `rspec` commands, init rbenv in your shell (`eval "$(rbenv init -)"`) so the correct Ruby/Bundler versions are used
-- Always prefer `bundle exec` for Ruby CLI tasks (rspec, rake, rubocop, etc.)
+- **Test Ruby**: `bundle exec rspec spec/path/to/file_spec.rb`, or `:LINE_NUMBER` for one example
+- Always prefer `bundle exec` for Ruby CLI tasks. Run targeted tests only — never the full suite unless asked.
 
 ## Code Style
 
-- **Ruby**: Follow RuboCop rules (150 character max line length)
-- **Vue/JS**: Use ESLint (Airbnb base + Vue 3 recommended)
-- **Vue Components**: Use PascalCase
-- **Events**: Use camelCase
-- **I18n**: No bare strings in templates; use i18n
-- **Error Handling**: Use custom exceptions (`lib/custom_exceptions/`)
-- **Models**: Validate presence/uniqueness, add proper indexes
-- **Type Safety**: Use PropTypes in Vue, strong params in Rails
-- **Naming**: Use clear, descriptive names with consistent casing
-- **Vue API**: Always use Composition API with `<script setup>` at the top
+- **Ruby**: RuboCop rules, 150 character max line length. Use compact `module`/`class` definitions; avoid nested styles.
+- **Vue/JS**: ESLint (Airbnb base + Vue 3 recommended)
+- **Vue components**: PascalCase. **Events**: camelCase.
+- **Vue API**: Composition API with `<script setup>` at the top
+- **I18n**: no bare strings in templates
+- **Error handling**: use custom exceptions (`lib/custom_exceptions/`)
+- **Models**: validate presence/uniqueness, add proper indexes
+- **Type safety**: PropTypes in Vue, strong params in Rails
+- **Specs**: prefer `with_modified_env` over stubbing `ENV` directly. In parallel/reloading environments, compare `error.class.name` rather than constant class equality.
 
 ## Styling
 
-- **Tailwind Only**:  
-  - Do not write custom CSS  
-  - Do not use scoped CSS  
-  - Do not use inline styles  
-  - Always use Tailwind utility classes  
-- **Colors**: Refer to `tailwind.config.js` for color definitions
+- **Default to Tailwind utilities.** No custom CSS, no scoped CSS, no inline styles in new dashboard / `components-next` code.
+- **Known exception**: the live-chat widget (`app/javascript/widget/`) predates that rule and still carries SCSS partials plus scoped `<style lang="scss">` blocks. Edit those in place — do not rewrite them into Tailwind as a side quest.
+- **Colors**: see `tailwind.config.js`.
+- RTL: alignment that follows the *text direction* uses logical utilities (`ms-`/`me-`, `text-start`). Alignment that follows a *fixed screen edge* stays physical (`ml-`/`pr-`, `text-right`) — mixing the two is how RTL layouts break.
 
 ## General Guidelines
 
-- MVP focus: Least code change, happy-path only
-- No unnecessary defensive programming
-- Ship the happy path first: limit guards/fallbacks to what production has proven necessary, then iterate
-- Prefer minimal, readable code over elaborate abstractions; clarity beats cleverness
-- Break down complex tasks into small, testable units
-- Iterate after confirmation
+- MVP focus: least code change, happy path only
+- No unnecessary defensive programming; limit guards/fallbacks to what production has proven necessary
+- Prefer minimal, readable code over elaborate abstractions
+- Break work into small, testable units; iterate after confirmation
 - Avoid writing specs unless explicitly asked
 - Remove dead/unreachable/unused code
-- Don’t write multiple versions or backups for the same logic — pick the best approach and implement it
-- Prefer `with_modified_env` (from spec helpers) over stubbing `ENV` directly in specs
-- Specs in parallel/reloading environments: prefer comparing `error.class.name` over constant class equality when asserting raised errors
+- Never write multiple versions or backups of the same logic — pick one and implement it
 
-## Codex Worktree Workflow
+## Commits and PRs
 
-- Use a separate git worktree + branch per task to keep changes isolated.
-- Keep Codex-specific local setup under `.codex/` and use `Procfile.worktree` for worktree process orchestration.
-- The setup workflow in `.codex/environments/environment.toml` should dynamically generate per-worktree DB/port values (Rails, Vite, Redis DB index) to avoid collisions.
-- Start each worktree with its own Overmind socket/title so multiple instances can run at the same time.
-
-## Commit Messages
-
-- Prefer Conventional Commits: `type(scope): subject` (scope optional)
-- Example: `feat(auth): add user authentication`
-- Don't reference Claude in commit messages
-
-## PR Description Format
-
-- Start with a short, user-facing paragraph describing the product change.
-- Add a `Closes` section with relevant issue links (GitHub, Linear, etc.).
-- For feature PRs, add `How to test` from a product/UX standpoint.
-- For bugfix PRs, use `How to reproduce` when helpful.
-- Optionally add a `What changed` section for implementation highlights.
-- Do not add a `How this was tested` section listing specs/commands.
+- Conventional Commits: `type(scope): subject` — e.g. `feat(auth): add user authentication`
+- Do not reference Claude, Codex, or any AI assistant in commit messages or PR bodies
+- PR body: short user-facing paragraph → `Closes` section with issue links → `How to test` (features) or `How to reproduce` (bugfixes) → optional `What changed`
+- Do not add a `How this was tested` section listing specs/commands
 
 ## Project-Specific
 
-- **Translations**:
-  - Only update `en.yml` and `en.json`
-  - Other languages are handled by the community
-  - Backend i18n → `en.yml`, Frontend i18n → `en.json`
-- **Frontend**:
-  - Use `components-next/` for message bubbles (the rest is being deprecated)
+- **Translations**: only edit `en.yml` (backend) and `en.json` (frontend). Other languages come from the community.
+- **Frontend**: use `components-next/` for message bubbles; the rest is being deprecated.
+- **Branding**: for user-facing strings containing "Chatwoot" that should adapt to white-labeled installs, apply `replaceInstallationName` from `shared/composables/useBranding` in the UI layer rather than hardcoding brand copy.
 
-## Ruby Best Practices
+## Enterprise Edition
 
-- Use compact `module/class` definitions; avoid nested styles
+Chatwoot has an Enterprise overlay under `enterprise/` that extends/overrides OSS code. Keep the two trees compatible. Reference: https://chatwoot.help/hc/handbook/articles/developing-enterprise-edition-features-38
 
-## Enterprise Edition Notes
+Checklist for any change to core logic or public APIs:
 
-- Chatwoot has an Enterprise overlay under `enterprise/` that extends/overrides OSS code.
-- When you add or modify core functionality, always check for corresponding files in `enterprise/` and keep behavior compatible.
-- Follow the Enterprise development practices documented here:
-  - https://chatwoot.help/hc/handbook/articles/developing-enterprise-edition-features-38
+- Search both trees before editing: `rg -n "FooService|ControllerName" app enterprise`
+- New endpoints/services/models: decide whether Enterprise needs an override (`enterprise/app/...`) or an extension point (`prepend_mod_with`, hooks, config) instead of a hard fork
+- Never hardcode instance- or plan-specific behavior in OSS — use configuration, feature flags, or extension points
+- Keep request/response contracts identical across OSS and Enterprise; update both route sets together
+- Mirror renames/moves of shared code into `enterprise/` to prevent drift
+- Enterprise-only behavior in an existing OSS feature → add an Enterprise module via `prepend_mod_with`/`include_mod_with` rather than editing OSS files, especially for policies, controllers, and services. Enterprise-exclusive features live directly under `enterprise/`.
+- Enterprise specs go in `spec/enterprise`, mirroring the OSS layout
 
-Practical checklist for any change impacting core logic or public APIs
-- Search for related files in both trees before editing (e.g., `rg -n "FooService|ControllerName|ModelName" app enterprise`).
-- If adding new endpoints, services, or models, consider whether Enterprise needs:
-  - An override (e.g., `enterprise/app/...`), or
-  - An extension point (e.g., `prepend_mod_with`, hooks, configuration) to avoid hard forks.
-- Avoid hardcoding instance- or plan-specific behavior in OSS; prefer configuration, feature flags, or extension points consumed by Enterprise.
-- Keep request/response contracts stable across OSS and Enterprise; update both sets of routes/controllers when introducing new APIs.
-- When renaming/moving shared code, mirror the change in `enterprise/` to prevent drift.
-- Tests: Add Enterprise-specific specs under `spec/enterprise`, mirroring OSS spec layout where applicable.
-- When modifying existing OSS features for Enterprise-only behavior, add an Enterprise module (via `prepend_mod_with`/`include_mod_with`) instead of editing OSS files directly—especially for policies, controllers, and services. For Enterprise-exclusive features, place code directly under `enterprise/`.
+## Knowledge Graph (graphify)
 
-## Branding / White-labeling note
+A persistent AST-derived graph lives in `graphify-out/` (god nodes, communities, cross-file relationships). Full setup notes: `docs/ai/AI_DEV_WORKFLOW.md`.
 
-- For user-facing strings that currently contain "Chatwoot" but should adapt to branded/self-hosted installs, prefer applying `replaceInstallationName` from `shared/composables/useBranding` in the UI layer (for example tooltip and suggestion labels) instead of adding hardcoded brand-specific copy.
+**Explore the graph before reading raw files:**
 
-## graphify
+- `graphify query "<question>"` — scoped subgraph, far smaller than grep output
+- `graphify path "<A>" "<B>"` — relationship between two concepts
+- `graphify explain "<concept>"` — focused explanation
+- `graphify-out/wiki/index.md` — broad navigation, when it exists
+- `graphify-out/GRAPH_REPORT.md` — read only for broad architecture orientation
+- Never read `graphify-out/graph.json` directly — it is ~14 MB of raw JSON. Use the CLI.
+- Inspect only files relevant to the task; avoid full-directory reads.
 
-This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+**Keeping it current** (`scripts/ai-task`):
 
-Rules:
-- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
-- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
-- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
-- Do NOT read graphify-out/graph.json directly — it is large raw JSON; use graphify CLI commands instead.
-- After significant code changes or before committing a completed feature/fix, run `scripts/ai-task --update-graph` to keep the graph current. Do not rebuild the graph after every tiny edit.
+- `scripts/ai-task` — check status, build if missing (AST only, no LLM cost)
+- `scripts/ai-task --update-graph` — rebuild after significant code changes or before committing a completed feature. Not after every small edit.
+- `scripts/ai-task -- bundle exec rspec spec/...` — ensure the graph is fresh, then run a command
+- If a rebuild produces fewer nodes than the stored graph, graphify refuses to overwrite it. When the shrink is expected (code was deleted), run `graphify update --force` — `scripts/ai-task` does not accept that flag.
 
-## AI Task Workflow
+## Final Reports
 
-Use `scripts/ai-task` to manage the knowledge graph lifecycle before AI-assisted tasks.
-
-- `scripts/ai-task` — Check graph status; build if missing (AST-only, no LLM cost)
-- `scripts/ai-task --update-graph` — Force rebuild after significant code changes
-- `scripts/ai-task -- bundle exec rspec spec/...` — Ensure graph fresh, then run
-
-**Graph-first exploration rules:**
-1. If `graphify-out/graph.json` exists, use `graphify query/path/explain` before reading raw files
-2. Read `graphify-out/GRAPH_REPORT.md` only for initial broad architecture orientation
-3. Do not read `graph.json` directly — it can exceed 100 MB
-4. Inspect only files relevant to the task; avoid full-directory reads
-5. Run targeted tests only (`rspec spec/path/to/file_spec.rb`) — never the full suite unless asked
-
-## Caveman-Style Final Reports
-
-End every completed task with a compact report — no prose padding:
+End every completed task with a compact report — no prose padding, one bullet per item. If nothing changed, say so in one line.
 
 ```
 ## Done
@@ -149,15 +136,27 @@ End every completed task with a compact report — no prose padding:
 - Risks: <one line or "none">
 ```
 
-Do not write multi-paragraph summaries. One bullet per item. If nothing changed, say so in one line.
-
 ## Custom Behdashtik Modules
 
-This repository contains custom Behdashtik overlays that are **not upstream Chatwoot**. Do not confuse them with core Chatwoot functionality, and do not remove or refactor them as dead code.
+These are Behdashtik overlays, **not** upstream Chatwoot. Do not mistake them for core functionality and do not remove or refactor them as dead code.
 
 ### Visitor Journey Tracking
-Records dev website page visits as private/internal notes in the active Chatwoot conversation.
-- Full docs: `docs/behdashtik-visitor-journey-tracking.md`
-- Module files: `app/controllers/api/v1/behdashtik/`, `app/services/behdashtik/`, `public/js/behdashtik-journey-tracker.js`
-- Requires WordPress dev plugin (committed separately to `jolfaguy12-cell/wp-plugin`)
-- **DEV only** (`dev.behdashtik.ir`). Production must not be enabled without explicit approval.
+Records dev-website page visits as private notes on the active conversation.
+- Docs: `docs/behdashtik-visitor-journey-tracking.md`
+- Files: `app/controllers/api/v1/behdashtik/`, `app/services/behdashtik/`, `public/js/behdashtik-journey-tracker.js`
+- Needs the WordPress plugin (separate repo: `jolfaguy12-cell/wp-plugin`)
+- **DEV only** (`dev.behdashtik.ir`). Do not enable in production without explicit approval.
+
+### Widget Launcher and Font
+- `public/fonts/iransans/` plus the `<style>` block in `app/views/widgets/show.html.erb` render the widget UI in IRANSansXFaNum. The block must stay **after** the Vite tags to win over Tailwind preflight.
+- Launcher appearance (shape, brand color, icon, pulse, mobile offset) is overridden from the WordPress side, not here — see the `wp-plugin` repo. Keeping it there survives Chatwoot upgrades.
+- RTL fixes in `widget/components/UnreadMessage*.vue` and `assets/scss/views/_conversation.scss` are upstream bug fixes, safe for LTR, but will be lost on a Chatwoot upgrade — re-apply them.
+
+## Worktrees
+
+Optional, for isolating parallel tasks. Nothing is committed for this yet — create it if you adopt the workflow.
+
+- One git worktree + branch per task.
+- Keep per-agent local setup out of the repo (e.g. an ignored `.codex/` or `.claude/` subdirectory) and use a dedicated Procfile for worktree process orchestration.
+- Generate per-worktree DB name, Rails/Vite ports, and Redis DB index dynamically so parallel worktrees do not collide.
+- Give each worktree its own Overmind socket and title.
