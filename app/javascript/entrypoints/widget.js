@@ -15,6 +15,7 @@ import {
   startsWithPlus,
   isPhoneNumberValidWithDialCode,
 } from 'shared/helpers/Validators';
+import { isValidIranMobile } from 'shared/helpers/iranPhone';
 
 const i18n = createI18n({
   legacy: false, // https://github.com/intlify/vue-i18n/issues/1902
@@ -35,6 +36,7 @@ app.use(
     rules: {
       startsWithPlus: ({ value }) => startsWithPlus(value),
       isValidPhoneNumber: ({ value }) => isPhoneNumberValidWithDialCode(value),
+      isIranMobile: ({ value }) => isValidIranMobile(value),
     },
   })
 );

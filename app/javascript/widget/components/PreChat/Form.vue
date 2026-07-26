@@ -7,8 +7,8 @@ import { isEmptyObject } from 'widget/helpers/utils';
 import { getRegexp } from 'shared/helpers/Validators';
 import { useMessageFormatter } from 'shared/composables/useMessageFormatter';
 import configMixin from 'widget/mixins/configMixin';
-import { FormKit, createInput } from '@formkit/vue';
-import PhoneInput from 'widget/components/Form/PhoneInput.vue';
+import { FormKit } from '@formkit/vue';
+import { normalizeIranMobile } from 'shared/helpers/iranPhone';
 
 export default {
   components: {
@@ -25,17 +25,13 @@ export default {
   },
   emits: ['submitPreChat'],
   setup() {
-    const phoneInput = createInput(PhoneInput, {
-      props: ['hasErrorInPhoneInput'],
-    });
     const { formatMessage } = useMessageFormatter();
 
-    return { formatMessage, phoneInput };
+    return { formatMessage };
   },
   data() {
     return {
       locale: this.$root.$i18n.locale,
-      hasErrorInPhoneInput: false,
       message: '',
       formValues: {},
       labels: {
@@ -108,9 +104,11 @@ export default {
         .filter(field => field.enabled)
         .map(field => ({
           ...field,
+          // Every visitor here is Iranian, so the country picker is dead
+          // weight — a plain tel input plus normalisation on submit.
           type:
             field.name === 'phoneNumber'
-              ? this.phoneInput
+              ? 'tel'
               : this.findFieldType(field.type),
         }));
     },
@@ -141,12 +139,9 @@ export default {
   },
   methods: {
     inputClass(input) {
-      const { state, family: classification, type } = input.context;
+      const { family: classification, type } = input.context;
       if (classification === 'box' && type === 'checkbox') {
         return '';
-      }
-      if (type === 'phoneInput') {
-        this.hasErrorInPhoneInput = state.invalid;
       }
       return 'mt-1 rounded w-full py-2 px-3';
     },
@@ -175,7 +170,7 @@ export default {
         : null;
       const validations = {
         emailAddress: 'email',
-        phoneNumber: ['startsWithPlus', 'isValidPhoneNumber'],
+        phoneNumber: ['isIranMobile'],
         url: 'url',
         date: 'date',
         text: null,
@@ -236,7 +231,8 @@ export default {
       const { emailAddress, fullName, phoneNumber, message } = this.formValues;
       this.$emit('submitPreChat', {
         fullName,
-        phoneNumber,
+        // Contact only accepts E.164, and silently reverts anything else
+        phoneNumber: normalizeIranMobile(phoneNumber) || phoneNumber,
         emailAddress,
         message,
         activeCampaignId: this.activeCampaign.id,
@@ -287,17 +283,13 @@ export default {
       label-class="text-sm font-medium text-n-slate-12"
       :input-class="context => inputClass(context)"
       :validation-messages="{
-        startsWithPlus: $t(
-          'PRE_CHAT_FORM.FIELDS.PHONE_NUMBER.DIAL_CODE_VALID_ERROR'
-        ),
-        isValidPhoneNumber: $t('PRE_CHAT_FORM.FIELDS.PHONE_NUMBER.VALID_ERROR'),
+        isIranMobile: $t('PRE_CHAT_FORM.FIELDS.PHONE_NUMBER.VALID_ERROR'),
         email: $t('PRE_CHAT_FORM.FIELDS.EMAIL_ADDRESS.VALID_ERROR'),
         required: $t('PRE_CHAT_FORM.REQUIRED'),
         matches: item.regex_cue
           ? item.regex_cue
           : $t('PRE_CHAT_FORM.REGEX_ERROR'),
       }"
-      :has-error-in-phone-input="hasErrorInPhoneInput"
     />
     <FormKit
       v-if="!hasActiveCampaign"
