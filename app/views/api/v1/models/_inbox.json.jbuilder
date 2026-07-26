@@ -47,6 +47,7 @@ if resource.web_widget?
   json.hmac_token resource.channel.try(:hmac_token) if Current.account_user&.administrator?
   json.pre_chat_form_enabled resource.channel.try(:pre_chat_form_enabled)
   json.pre_chat_form_options resource.channel.try(:pre_chat_form_options)
+  json.channel_links resource.channel.try(:channel_links)
   json.continuity_via_email resource.channel.try(:continuity_via_email)
 end
 

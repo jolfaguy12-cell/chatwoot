@@ -639,6 +639,7 @@
       "CONFIGURATION": "Configuration",
       "CAMPAIGN": "Campaigns",
       "PRE_CHAT_FORM": "Pre Chat Form",
+      "CHANNEL_LINKS": "Channel Links",
       "BUSINESS_HOURS": "Business Hours",
       "WIDGET_BUILDER": "Widget Builder",
       "BOT_CONFIGURATION": "Bot Configuration",
@@ -903,6 +904,19 @@
       "SUBTITLE": "Your Facebook connection has expired, please reconnect your Facebook page to continue services",
       "MESSAGE_SUCCESS": "Reconnection successful",
       "MESSAGE_ERROR": "There was an error, please try again"
+    },
+    "CHANNEL_LINKS": {
+      "DESCRIPTION": "Shortcut cards shown on the widget home screen, under the availability card. Use them to point visitors at your other channels.",
+      "LABEL": "Label",
+      "LABEL_PLACEHOLDER": "Telegram channel",
+      "URL": "Link",
+      "URL_PLACEHOLDER": "https://t.me/yourchannel or tel:09121234567",
+      "ICON": "Icon",
+      "COLOR": "Color",
+      "COLOR_PLACEHOLDER": "Icon color, defaults to the brand's",
+      "EMPTY": "No channel links yet.",
+      "ADD": "Add link",
+      "SAVE": "Save"
     },
     "PRE_CHAT_FORM": {
       "DESCRIPTION": "Pre chat forms enable you to capture user information before they start conversation with you.",

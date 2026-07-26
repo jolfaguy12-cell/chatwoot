@@ -1,5 +1,6 @@
 <script>
 import TeamAvailability from 'widget/components/TeamAvailability.vue';
+import ChannelLinks from 'widget/components/ChannelLinks.vue';
 import { mapGetters } from 'vuex';
 import { useRouter } from 'vue-router';
 import configMixin from 'widget/mixins/configMixin';
@@ -8,6 +9,7 @@ export default {
   name: 'Home',
   components: {
     ArticleContainer,
+    ChannelLinks,
     TeamAvailability,
   },
   mixins: [configMixin],
@@ -21,6 +23,9 @@ export default {
       conversationSize: 'conversation/getConversationSize',
       unreadMessageCount: 'conversation/getUnreadMessageCount',
     }),
+    channelLinks() {
+      return this.channelConfig.channelLinks || [];
+    },
   },
   methods: {
     startConversation() {
@@ -41,6 +46,8 @@ export default {
       :unread-count="unreadMessageCount"
       @start-conversation="startConversation"
     />
+
+    <ChannelLinks :links="channelLinks" />
 
     <ArticleContainer />
   </div>

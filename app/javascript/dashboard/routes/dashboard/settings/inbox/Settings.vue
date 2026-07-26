@@ -18,6 +18,7 @@ import GoogleReauthorize from './channels/google/Reauthorize.vue';
 import WhatsappReauthorize from './channels/whatsapp/Reauthorize.vue';
 import InboxHealthAPI from 'dashboard/api/inboxHealth';
 import PreChatFormSettings from './PreChatForm/Settings.vue';
+import ChannelLinksSettings from './ChannelLinks/Settings.vue';
 import WeeklyAvailability from './components/WeeklyAvailability.vue';
 import GreetingsEditor from 'shared/components/GreetingsEditor.vue';
 import ConfigurationPage from './settingsPage/ConfigurationPage.vue';
@@ -54,6 +55,7 @@ export default {
     FacebookReauthorize,
     GreetingsEditor,
     PreChatFormSettings,
+    ChannelLinksSettings,
     SettingIntroBanner,
     SettingsToggleSection,
     SettingsFieldSection,
@@ -191,6 +193,10 @@ export default {
           {
             key: 'pre-chat-form',
             name: this.$t('INBOX_MGMT.TABS.PRE_CHAT_FORM'),
+          },
+          {
+            key: 'channel-links',
+            name: this.$t('INBOX_MGMT.TABS.CHANNEL_LINKS'),
           },
         ];
       }
@@ -1291,6 +1297,9 @@ export default {
         </div>
         <div v-if="selectedTabKey === 'pre-chat-form'">
           <PreChatFormSettings :inbox="inbox" />
+        </div>
+        <div v-if="selectedTabKey === 'channel-links'">
+          <ChannelLinksSettings :inbox="inbox" />
         </div>
         <div v-if="selectedTabKey === 'business-hours'">
           <WeeklyAvailability :inbox="inbox" />
