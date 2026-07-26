@@ -35,6 +35,46 @@
     </script>
     <%= vite_client_tag %>
     <%= vite_javascript_tag 'widget' %>
+    <%# Behdashtik: IRANSans for the widget UI. Must come after the Vite tags so it wins over Tailwind preflight. %>
+    <style>
+      @font-face {
+        font-family: 'IRANSansXFaNum';
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url('/fonts/iransans/IRANSansXFaNum-regular.woff2') format('woff2');
+      }
+      @font-face {
+        font-family: 'IRANSansXFaNum';
+        font-style: normal;
+        font-weight: 500;
+        font-display: swap;
+        src: url('/fonts/iransans/IRANSansXFaNum-medium.woff2') format('woff2');
+      }
+      @font-face {
+        font-family: 'IRANSansXFaNum';
+        font-style: normal;
+        font-weight: 600;
+        font-display: swap;
+        src: url('/fonts/iransans/IRANSansXFaNum-demiBold.woff2') format('woff2');
+      }
+      @font-face {
+        font-family: 'IRANSansXFaNum';
+        font-style: normal;
+        font-weight: 700;
+        font-display: swap;
+        src: url('/fonts/iransans/IRANSansXFaNum-bold.woff2') format('woff2');
+      }
+      html,
+      body,
+      #app,
+      button,
+      input,
+      select,
+      textarea {
+        font-family: 'IRANSansXFaNum', -apple-system, system-ui, 'Segoe UI', Roboto, sans-serif;
+      }
+    </style>
   </head>
   <body>
     <div id="app" class="h-full"></div>
