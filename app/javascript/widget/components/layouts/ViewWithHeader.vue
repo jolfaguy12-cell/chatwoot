@@ -104,7 +104,10 @@ export default {
 <template>
   <div
     class="w-full h-full bg-n-slate-2 dark:bg-n-solid-1"
-    :class="{ 'overflow-auto': isOnHomeView }"
+    :class="{
+      'overflow-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden':
+        isOnHomeView,
+    }"
     @keydown.esc="closeWindow"
   >
     <div class="relative flex flex-col h-full">

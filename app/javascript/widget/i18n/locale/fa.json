@@ -23,7 +23,7 @@
     "BACK_AS_SOON_AS_POSSIBLE": "در سریعترین زمان ممکن باز خواهیم گشت"
   },
   "REPLY_TIME": {
-    "IN_A_FEW_MINUTES": "معمولاً در عرض چند دقیقه پاسخ می دهند",
+    "IN_A_FEW_MINUTES": "زیر یک دقیقه جوابتون رو میدیم",
     "IN_A_FEW_HOURS": "معمولاً در عرض چند ساعت پاسخ می دهند",
     "IN_A_DAY": "به طور معمول در یک روز پاسخ می دهند",
     "BACK_IN_HOURS": "تا {n} ساعت دیگر باز خواهیم گشت | تا {n} ساعت دیگر باز خواهیم گشت",
@@ -42,9 +42,9 @@
     "FRIDAY": "جمعه",
     "SATURDAY": "شنبه"
   },
-  "START_CONVERSATION": "شروع گفتگو",
+  "START_CONVERSATION": "شروع چت",
   "END_CONVERSATION": "پایان گفتگو",
-  "CONTINUE_CONVERSATION": "ادامه گفتگو",
+  "CONTINUE_CONVERSATION": "شروع چت",
   "YOU": "شما",
   "START_NEW_CONVERSATION": "یک مکالمه جدید را شروع کنید",
   "VIEW_UNREAD_MESSAGES": "شما پیام خوانده نشده دارید",

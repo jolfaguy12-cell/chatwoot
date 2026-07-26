@@ -64,10 +64,25 @@ const headerText = computed(() =>
 </script>
 
 <template>
-  <div class="flex items-center justify-between gap-2">
-    <div class="flex flex-col gap-1">
-      <div v-if="showHeader" class="font-medium text-n-slate-12">
-        {{ headerText }}
+  <div class="flex items-center gap-3">
+    <GroupedAvatars v-if="showAvatars && isOnline" :users="agents" />
+
+    <div class="flex flex-col flex-1 min-w-0 gap-1">
+      <div
+        v-if="showHeader"
+        class="flex items-center gap-2 font-medium text-n-slate-12"
+      >
+        <span>{{ headerText }}</span>
+        <span
+          v-if="isAvailable"
+          class="relative flex size-2 shrink-0"
+          aria-hidden="true"
+        >
+          <span
+            class="absolute inline-flex w-full h-full rounded-full opacity-75 bg-green-500 animate-ping"
+          />
+          <span class="relative inline-flex rounded-full size-2 bg-green-500" />
+        </span>
       </div>
 
       <AvailabilityText
@@ -83,7 +98,5 @@ const headerText = computed(() =>
         class="text-n-slate-11"
       />
     </div>
-
-    <GroupedAvatars v-if="showAvatars && isOnline" :users="agents" />
   </div>
 </template>
