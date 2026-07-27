@@ -73,7 +73,17 @@
       input,
       select,
       textarea {
-        font-family: 'IRANSansXFaNum', -apple-system, system-ui, 'Segoe UI', Roboto, sans-serif;
+        font-family: 'IRANSansXFaNum', -apple-system, system-ui, 'Segoe UI', Roboto, sans-serif,
+          'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji';
+      }
+
+      /*
+        The CSAT faces are the whole control, so they must never fall back to a
+        monochrome outline font when the stack above has no glyph for them.
+      */
+      .customer-satisfaction .ratings .emoji-button {
+        font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji',
+          'Twemoji Mozilla', 'EmojiOne Color', sans-serif;
       }
     </style>
   </head>
