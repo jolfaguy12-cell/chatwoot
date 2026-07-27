@@ -32,7 +32,11 @@ const onBackButtonClick = () => {
         class="px-2 ltr:-ml-3 rtl:-mr-3"
         @click="onBackButtonClick"
       >
-        <FluentIcon icon="chevron-left" size="24" class="text-n-slate-12" />
+        <FluentIcon
+          icon="chevron-left"
+          size="24"
+          class="text-n-slate-12 rtl:rotate-180"
+        />
       </button>
       <img
         v-if="avatarUrl"
@@ -45,12 +49,24 @@ const onBackButtonClick = () => {
           class="flex items-center text-base font-medium leading-4 text-n-slate-12"
         >
           <span v-dompurify-html="title" class="ltr:mr-1 rtl:ml-1" />
-          <div
-            :class="`h-2 w-2 rounded-full
-              ${isOnline ? 'bg-n-teal-10' : 'hidden'}`"
-          />
+          <span
+            v-if="isOnline"
+            class="relative flex size-2 shrink-0"
+            aria-hidden="true"
+          >
+            <span
+              class="absolute inline-flex w-full h-full rounded-full opacity-75 bg-n-teal-10 animate-ping"
+            />
+            <span
+              class="relative inline-flex rounded-full size-2 bg-n-teal-10"
+            />
+          </span>
+        </div>
+        <div v-if="isOnline" class="text-xs leading-3 text-n-slate-11">
+          {{ $t('TEAM_AVAILABILITY.ONLINE_SHORT') }}
         </div>
         <AvailabilityContainer
+          v-else
           :agents="availableAgents"
           :show-header="false"
           :show-avatars="false"

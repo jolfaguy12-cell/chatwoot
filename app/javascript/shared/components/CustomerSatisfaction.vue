@@ -176,7 +176,7 @@ export default {
         }"
       >
         <Spinner v-if="isUpdating && feedback" />
-        <FluentIcon v-else icon="chevron-right" />
+        <FluentIcon v-else icon="chevron-right" class="rtl:rotate-180" />
       </button>
     </form>
   </div>
@@ -185,14 +185,15 @@ export default {
 <style lang="scss" scoped>
 .customer-satisfaction {
   .ratings {
+    // Full colour at rest — greyed-out faces read as disabled rather than pickable.
     .emoji-button {
-      @apply shadow-none grayscale text-2xl outline-none transition-all duration-200;
+      @apply shadow-none text-3xl opacity-70 outline-none transition-all duration-200;
 
       &.selected,
       &:hover,
       &:focus,
       &:active {
-        @apply grayscale-0 scale-[1.32];
+        @apply opacity-100 scale-[1.32];
       }
 
       &.disabled {

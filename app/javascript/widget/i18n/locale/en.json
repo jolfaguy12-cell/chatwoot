@@ -19,6 +19,7 @@
   },
   "TEAM_AVAILABILITY": {
     "ONLINE": "We are online",
+    "ONLINE_SHORT": "Online",
     "OFFLINE": "We are away at the moment",
     "BACK_AS_SOON_AS_POSSIBLE": "We will be back as soon as possible"
   },

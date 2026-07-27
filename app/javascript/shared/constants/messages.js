@@ -52,14 +52,14 @@ export const CSAT_RATINGS = [
   {
     key: 'disappointed',
     translationKey: 'CSAT.RATINGS.POOR',
-    emoji: '😞',
+    emoji: '😫',
     value: 1,
     color: '#FDAD2A',
   },
   {
     key: 'expressionless',
     translationKey: 'CSAT.RATINGS.FAIR',
-    emoji: '😑',
+    emoji: '🙁',
     value: 2,
     color: '#FFC532',
   },
@@ -73,13 +73,13 @@ export const CSAT_RATINGS = [
   {
     key: 'grinning',
     translationKey: 'CSAT.RATINGS.GOOD',
-    emoji: '😀',
+    emoji: '😃',
     value: 4,
     color: '#6FD86F',
   },
   {
     key: 'smiling',
-    emoji: '😍',
+    emoji: '🤩',
     translationKey: 'CSAT.RATINGS.EXCELLENT',
     value: 5,
     color: '#44CE4B',

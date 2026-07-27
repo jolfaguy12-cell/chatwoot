@@ -19,6 +19,7 @@
   },
   "TEAM_AVAILABILITY": {
     "ONLINE": "ما آنلاین هستیم",
+    "ONLINE_SHORT": "آنلاین",
     "OFFLINE": "در حال حاضر دردسترس نیستیم",
     "BACK_AS_SOON_AS_POSSIBLE": "در سریعترین زمان ممکن باز خواهیم گشت"
   },
@@ -107,9 +108,9 @@
     "ARIA_LABEL": "انتخاب اموجی"
   },
   "CSAT": {
-    "TITLE": "به گفتگوی خود امتیاز دهید",
+    "TITLE": "به من امتیاز بده",
     "SUBMITTED_TITLE": "با تشکر از شما برای ثبت امتیاز",
-    "PLACEHOLDER": "بیشتر به ما بگویید..."
+    "PLACEHOLDER": "نظرت رو بنویس..."
   },
   "EMAIL_TRANSCRIPT": {
     "BUTTON_TEXT": "درخواست رونوشت گفتگو",
