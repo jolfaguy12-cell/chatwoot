@@ -159,6 +159,12 @@ Shortcut cards on the widget home screen (Telegram, Rubika, Eitaa, SMS, phone �
 - This is not cosmetic: `Contact#phone_number_format` **silently reverts** any value that is not E.164, so an un-normalised number is dropped without an error.
 - The widget pre-chat form uses a plain `tel` input with the `isIranMobile` FormKit rule (registered in `app/javascript/entrypoints/widget.js`); the upstream country-code picker is bypassed.
 
+### Branding (bd)
+Installation branding is set in **`config/installation_config.yml`**, not in the database.
+- `INSTALLATION_NAME` / `BRAND_NAME` = `بهداشتیک`, `WIDGET_BRAND_URL` = `tel:09124517893`.
+- Setting these through Super Admin or a console write **does not stick**: `ConfigLoader#process(reconcile_only_new: false)` overwrites every `InstallationConfig` row with the YAML default, and it runs from `db:seed`. Edit the YAML, then `ConfigLoader.new.process(reconcile_only_new: false)` + `GlobalConfig.clear_cache`.
+- `LOGO_THUMBNAIL` is deliberately left at the Chatwoot default — it is the favicon source, and the widget footer no longer renders it.
+
 ### Widget Launcher and Font
 - `public/fonts/iransans/` plus the `<style>` block in `app/views/widgets/show.html.erb` render the widget UI in IRANSansXFaNum. The block must stay **after** the Vite tags to win over Tailwind preflight.
 - Launcher appearance (shape, brand color, icon, pulse, mobile offset) is overridden from the WordPress side, not here — see the `wp-plugin` repo. Keeping it there survives Chatwoot upgrades.
