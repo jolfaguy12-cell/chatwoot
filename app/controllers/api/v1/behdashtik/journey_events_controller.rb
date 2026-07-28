@@ -11,9 +11,9 @@ class Api::V1::Behdashtik::JourneyEventsController < ApplicationController
     conversation = find_active_conversation
     return head :accepted unless conversation
 
-    return head :no_content unless private_notes_enabled?
-
-    Behdashtik::VisitorJourneyService.new(conversation, journey_params).perform
+    service = Behdashtik::VisitorJourneyService.new(conversation, journey_params)
+    service.update_page_context
+    service.perform if private_notes_enabled?
     head :no_content
   rescue StandardError => e
     Rails.logger.error "[BehdashtikJourney] Error processing event: #{e.class}"

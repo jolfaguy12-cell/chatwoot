@@ -16,7 +16,32 @@ class Behdashtik::VisitorJourneyService
     nil
   end
 
+  # Structured page context for the AI agent: merged (never replaced) into the
+  # conversation's custom_attributes so it reaches agent-bot webhook payloads.
+  def update_page_context
+    url = sanitize_url(@params[:url])
+    return if url.blank?
+
+    attributes = {
+      'behdashtik_current_url' => url,
+      'behdashtik_page_title' => sanitize_text(@params[:title]),
+      'behdashtik_page_seen_at' => parse_timestamp(@params[:timestamp]),
+      'behdashtik_product_slug' => product_slug_from(url)
+    }
+    @conversation.update!(custom_attributes: @conversation.custom_attributes.to_h.merge(attributes))
+  rescue StandardError => e
+    Rails.logger.error "[BehdashtikJourney] Failed to update page context: #{e.class}"
+    nil
+  end
+
   private
+
+  def product_slug_from(url)
+    match = URI.parse(url).path.match(%r{/product/([^/]+)})
+    match ? CGI.unescape(match[1]) : ''
+  rescue URI::InvalidURIError
+    ''
+  end
 
   def build_note_content
     url = sanitize_url(@params[:url])
