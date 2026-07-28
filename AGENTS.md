@@ -175,7 +175,7 @@ Installation branding is set in **`config/installation_config.yml`**, not in the
 - `public/fonts/iransans/` plus the `<style>` block in `app/views/widgets/show.html.erb` render the widget UI in IRANSansXFaNum. The block must stay **after** the Vite tags to win over Tailwind preflight.
 - Launcher appearance (shape, brand color, icon, pulse, mobile offset) is overridden from the WordPress side, not here — see the `wp-plugin` repo. Keeping it there survives Chatwoot upgrades.
 - RTL fixes in `widget/components/UnreadMessage*.vue` and `assets/scss/views/_conversation.scss` are upstream bug fixes, safe for LTR, but will be lost on a Chatwoot upgrade — re-apply them.
-- `shared/components/Branding.vue` renders the footer as text only — the logo `<img>` was dropped because `LOGO_THUMBNAIL` still ships the Chatwoot mark. Restore it once a Behdashtik asset exists.
+- `shared/components/Branding.vue` renders the footer as the fixed text “Designed by Behdashtik” (`DESIGNED_BY` key, en.json only — every locale falls back to it) linking to `WIDGET_BRAND_URL` (`tel:09124517893` from `installation_config.yml`). The logo `<img>` was dropped because `LOGO_THUMBNAIL` still ships the Chatwoot mark. This is a fork customization — re-apply/verify after any Chatwoot upgrade.
 - Widget home copy (`welcome_title`, `welcome_tagline`) lives in the DB per inbox, not in the locale files. Only the reusable strings (`TEAM_AVAILABILITY`, `REPLY_TIME`, `START_CONVERSATION`, …) are in `widget/i18n/locale/fa.json`.
 - The home view scrolls with the scrollbar hidden (`ViewWithHeader.vue`) — the widget sits on a transparent page area where the native bar renders badly.
 

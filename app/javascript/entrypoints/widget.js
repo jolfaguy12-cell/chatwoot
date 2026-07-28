@@ -20,6 +20,9 @@ import { isValidIranMobile } from 'shared/helpers/iranPhone';
 const i18n = createI18n({
   legacy: false, // https://github.com/intlify/vue-i18n/issues/1902
   locale: 'en',
+  // keys that exist only in en.json (e.g. brand literals) must never render
+  // as a raw key in the Persian widget
+  fallbackLocale: 'en',
   messages: i18nMessages,
 });
 

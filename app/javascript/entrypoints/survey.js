@@ -9,6 +9,7 @@ import { domPurifyConfig } from '../shared/helpers/HTMLSanitizer';
 const app = createApp(App);
 const i18n = createI18n({
   locale: 'en',
+  fallbackLocale: 'en',
   messages: i18nMessages,
 });
 

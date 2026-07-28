@@ -1,6 +1,4 @@
 <script>
-import { useBranding } from 'shared/composables/useBranding';
-
 const {
   LOGO_THUMBNAIL: logoThumbnail,
   BRAND_NAME: brandName,
@@ -13,12 +11,6 @@ export default {
       type: Boolean,
       default: false,
     },
-  },
-  setup() {
-    const { replaceInstallationName } = useBranding();
-    return {
-      replaceInstallationName,
-    };
   },
   data() {
     return {
@@ -68,9 +60,11 @@ export default {
       class="branding--link text-n-slate-11 hover:text-n-slate-12 cursor-pointer text-xs inline-flex grayscale-[1] hover:grayscale-0 hover:opacity-100 opacity-90 no-underline justify-center items-center leading-3"
     >
       <!-- Behdashtik: no logo thumbnail — LOGO_THUMBNAIL still ships the
-        Chatwoot mark and the footer is text-only. -->
+        Chatwoot mark and the footer is text-only. DESIGNED_BY exists only in
+        en.json so every locale falls back to the same brand literal; the link
+        target comes from WIDGET_BRAND_URL (tel:) in installation_config.yml. -->
       <span>
-        {{ replaceInstallationName($t('POWERED_BY')) }}
+        {{ $t('DESIGNED_BY') }}
       </span>
     </a>
   </div>
