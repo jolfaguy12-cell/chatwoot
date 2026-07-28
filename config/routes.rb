@@ -480,9 +480,10 @@ Rails.application.routes.draw do
         end
       end
 
-      # Behdashtik custom module: Visitor Journey Tracking
+      # Behdashtik custom modules: Visitor Journey Tracking, WooCommerce cart bridge
       namespace :behdashtik do
         resources :journey_events, only: [:create]
+        resources :cart_events, only: [:create]
       end
     end
 
