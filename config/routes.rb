@@ -94,6 +94,9 @@ Rails.application.routes.draw do
             end
           end
           resource :saml_settings, only: [:show, :create, :update, :destroy]
+          namespace :behdashtik_ai do
+            match '*proxy_path', to: 'proxy#forward', via: [:get, :post, :patch, :put, :delete]
+          end
           resources :agent_bots, only: [:index, :create, :show, :update, :destroy] do
             delete :avatar, on: :member
             post :reset_access_token, on: :member

@@ -147,6 +147,12 @@ Records dev-website page visits as private notes on the active conversation.
 - Needs the WordPress plugin (separate repo: `jolfaguy12-cell/wp-plugin`)
 - **DEV only** (`dev.behdashtik.ir`). Do not enable in production without explicit approval.
 
+### AI Support Agent (bd)
+The AI customer-support agent is a separate service at `/root/behdashtik-ai-agent` (systemd `bdsk-ai-agent`, FastAPI + LangGraph, SQLite state, OpenRouter models). Chatwoot-side pieces: AgentBot on inbox 1, Rails proxy `app/controllers/api/v1/accounts/behdashtik_ai/`, dashboard section Settings → AI Assistant (`settings/behdashtikAI/`), profile Telegram panel, and journey-service page-context custom_attributes.
+- Docs: `docs/behdashtik-ai-support.md` (Chatwoot side), `/root/behdashtik-ai-agent/README.md` + `docs/runbook.md` (service).
+- Conversation `pending` = AI-owned, `open` = human. Never enable Captain on the same inbox.
+- **DEV data only** (DEV hub). Production rollout needs explicit approval — see the runbook.
+
 ### Widget Channel Links
 Shortcut cards on the widget home screen (Telegram, Rubika, Eitaa, SMS, phone …), managed per inbox from **Settings → Inboxes → Channel Links**.
 - Stored in `channel_web_widgets.channel_links` (jsonb), permitted through `Channel::WebWidget::EDITABLE_ATTRS`, served to the widget via `channelLinks` in `app/views/widgets/show.html.erb`.

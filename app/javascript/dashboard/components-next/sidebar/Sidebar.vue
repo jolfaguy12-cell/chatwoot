@@ -715,6 +715,14 @@ const menuItems = computed(() => {
           to: accountScopedRoute('agent_list'),
         },
         {
+          name: 'Settings Behdashtik AI',
+          label: t('BEHDASHTIK_AI.SIDEBAR_LABEL'),
+          icon: 'i-lucide-sparkles',
+          activeOn: ['behdashtik_ai_settings_index'],
+          to: accountScopedRoute('behdashtik_ai_settings_index'),
+        },
+
+        {
           name: 'Settings Teams',
           label: t('SIDEBAR.TEAMS'),
           icon: 'i-lucide-users',

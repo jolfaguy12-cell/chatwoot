@@ -16,6 +16,7 @@ import UserLanguageSelect from './UserLanguageSelect.vue';
 import ChangePassword from './ChangePassword.vue';
 import NotificationPreferences from './NotificationPreferences.vue';
 import AudioNotifications from './AudioNotifications.vue';
+import TelegramConnection from './TelegramConnection.vue';
 import SectionLayout from '../account/components/SectionLayout.vue';
 import BaseSettingsHeader from '../components/BaseSettingsHeader.vue';
 import AccessToken from './AccessToken.vue';
@@ -41,6 +42,7 @@ export default {
     ChangePassword,
     NotificationPreferences,
     AudioNotifications,
+    TelegramConnection,
     AccessToken,
     MfaSettingsCard,
     ActiveSessions,
@@ -336,6 +338,7 @@ export default {
         <NotificationPreferences />
       </SectionLayout>
     </Policy>
+    <TelegramConnection />
     <SectionLayout
       with-border
       :title="$t('PROFILE_SETTINGS.FORM.ACCESS_TOKEN.TITLE')"
