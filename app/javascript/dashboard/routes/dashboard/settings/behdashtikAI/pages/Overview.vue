@@ -130,6 +130,16 @@ onMounted(load);
           </template>
         </span>
         <span
+          v-if="health.main_hub"
+          class="px-2 py-1 text-xs rounded-lg"
+          :class="healthBadge(health.main_hub.ok)"
+        >
+          {{ t('BEHDASHTIK_AI.OVERVIEW.HEALTH_HUB_MAIN') }}
+          <template v-if="health.main_hub.mirror_stale_seconds != null">
+            {{ `· ${health.main_hub.mirror_stale_seconds}s` }}
+          </template>
+        </span>
+        <span
           class="px-2 py-1 text-xs rounded-lg"
           :class="healthBadge(health.chatwoot && health.chatwoot.ok)"
         >

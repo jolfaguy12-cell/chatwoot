@@ -141,17 +141,17 @@ End every completed task with a compact report — no prose padding, one bullet 
 These are Behdashtik overlays, **not** upstream Chatwoot. Do not mistake them for core functionality and do not remove or refactor them as dead code.
 
 ### Visitor Journey Tracking
-Records dev-website page visits as private notes on the active conversation.
+Records website page visits as private notes on the active conversation, and as page-context custom attributes for the AI agent.
 - Docs: `docs/behdashtik-visitor-journey-tracking.md`
 - Files: `app/controllers/api/v1/behdashtik/`, `app/services/behdashtik/`, `public/js/behdashtik-journey-tracker.js`
 - Needs the WordPress plugin (separate repo: `jolfaguy12-cell/wp-plugin`)
-- **DEV only** (`dev.behdashtik.ir`). Do not enable in production without explicit approval.
+- Live on **behdashtik.ir and dev.behdashtik.ir** (since 2026-07-29). Origins are allowlisted in `BEHDASHTIK_VISITOR_JOURNEY_ALLOWED_ORIGINS`; anything else gets 403.
 
 ### AI Support Agent (bd)
-The AI customer-support agent is a separate service at `/root/behdashtik-ai-agent` (systemd `bdsk-ai-agent`, FastAPI + LangGraph, SQLite state, OpenRouter models). Chatwoot-side pieces: AgentBot on inbox 1, Rails proxy `app/controllers/api/v1/accounts/behdashtik_ai/`, dashboard section Settings → AI Assistant (`settings/behdashtikAI/`), profile Telegram panel, and journey-service page-context custom_attributes.
+The AI customer-support agent is a separate service at `/root/behdashtik-ai-agent` (systemd `bdsk-ai-agent`, FastAPI + LangGraph, SQLite state, OpenRouter models). Chatwoot-side pieces: AgentBot on inboxes 12 and 1, Rails proxy `app/controllers/api/v1/accounts/behdashtik_ai/`, dashboard section Settings → AI Assistant (`settings/behdashtikAI/`), profile Telegram panel, and journey-service page-context custom_attributes.
 - Docs: `docs/behdashtik-ai-support.md` (Chatwoot side), `/root/behdashtik-ai-agent/README.md` + `docs/runbook.md` (service).
 - Conversation `pending` = AI-owned, `open` = human. Never enable Captain on the same inbox.
-- **DEV data only** (DEV hub). Production rollout needs explicit approval — see the runbook.
+- **Two stores, one service**: inbox 12 (behdashtik.ir) is answered from the main hub, inbox 1 (dev) from the dev hub. The inbox is the only switch — see "Two sites, two hubs" in the runbook.
 
 ### Widget Channel Links
 Shortcut cards on the widget home screen (Telegram, Rubika, Eitaa, SMS, phone …), managed per inbox from **Settings → Inboxes → Channel Links**.

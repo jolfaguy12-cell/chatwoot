@@ -2,12 +2,12 @@
 
 > **Custom Behdashtik module — not upstream Chatwoot functionality.**
 > This module is maintained in the Behdashtik fork and must not be treated as Chatwoot core code.
-> WordPress plugin counterpart committed separately to `jolfaguy12-cell/wp-plugin` (loads `behdashtik-journey-tracker.js` on `dev.behdashtik.ir`).
-> **DEV only.** Production (`behdashtik.ir`) must not be enabled without explicit approval.
+> WordPress plugin counterpart committed separately to `jolfaguy12-cell/wp-plugin` (enqueues `behdashtik-journey-tracker.js` on every page).
+> **Live on `behdashtik.ir` and `dev.behdashtik.ir` since 2026-07-29.** The plugin enqueues the tracker everywhere; Chatwoot decides what it accepts, via `BEHDASHTIK_VISITOR_JOURNEY_ALLOWED_ORIGINS`.
 
 ## What the Module Does
 
-When an identified website visitor browses `dev.behdashtik.ir`, every page navigation they make is silently recorded as a **private/internal note** inside their active Chatwoot conversation. These notes are visible only to agents in the Chatwoot dashboard — the visitor never sees them.
+When an identified website visitor browses the store, every page navigation they make is silently recorded as a **private/internal note** inside their active Chatwoot conversation. These notes are visible only to agents in the Chatwoot dashboard — the visitor never sees them.
 
 This gives support agents full context: they know exactly which pages the visitor browsed before and during the conversation, without the visitor being aware of the tracking.
 
@@ -89,11 +89,15 @@ This is a CORS "simple" content type. `navigator.sendBeacon` and `fetch(mode:'no
 BEHDASHTIK_VISITOR_JOURNEY_ENABLED=true
 
 # Comma-separated list of allowed Origin headers
-BEHDASHTIK_VISITOR_JOURNEY_ALLOWED_ORIGINS=https://dev.behdashtik.ir
+BEHDASHTIK_VISITOR_JOURNEY_ALLOWED_ORIGINS=https://dev.behdashtik.ir,https://behdashtik.ir,https://www.behdashtik.ir
 
 # Set to false for dry-run mode (receives events but creates no notes)
 BEHDASHTIK_VISITOR_JOURNEY_PRIVATE_NOTES=true
 ```
+
+These values are read from the container environment, which Docker Compose
+captures when the container is **created**. After editing `.env` run
+`docker compose up -d rails sidekiq` — `docker restart` keeps the old values.
 
 All three vars are read via `ENV.fetch` at request time.
 

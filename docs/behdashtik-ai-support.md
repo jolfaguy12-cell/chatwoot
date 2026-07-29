@@ -6,10 +6,14 @@ Chatwoot repo.
 
 ## How it connects
 
-- **AgentBot** "Behdashtik AI Assistant" (webhook type) attached to inbox 1
-  (Behdashtik-Dev). New conversations start `pending` (bot-owned); the
-  service replies via the bot API and keeps them pending; handoff opens them.
+- **AgentBot** "Behdashtik AI Assistant" (webhook type) attached to inbox 12
+  (Behdashtik — behdashtik.ir) and inbox 1 (Behdashtik-Dev). New conversations
+  start `pending` (bot-owned); the service replies via the bot API and keeps
+  them pending; handoff opens them.
   Registration script: `behdashtik-ai-agent/scripts/register_agent_bot.rb`.
+- **Which store answers** is decided by the inbox: the service maps inbox 12 →
+  main hub (behdashtik.ir data) and everything else → dev hub. See the
+  service runbook, "Two sites, two hubs".
 - **Reads** use the `agent-claude@behdashtik.ir` operator account's access
   token (the bot allowlist has no read endpoints).
 - Env (`.env`): `BEHDASHTIK_AI_SERVICE_URL`, `BEHDASHTIK_AI_ADMIN_TOKEN` —
@@ -34,7 +38,10 @@ No Rails migrations were added — all AI state lives in the service's SQLite.
 - `api_access_token` (underscored header) is dropped by nginx on the public
   URL; the dashboard's own auth headers are fine. For curl tests of the
   proxy use `http://127.0.0.1:4000`.
-- Do not also enable Captain on inbox 1 — two bots would race for `pending`.
+- Do not also enable Captain on inbox 1 or 12 — two bots would race for `pending`.
+- `BEHDASHTIK_VISITOR_JOURNEY_ALLOWED_ORIGINS` (and every other `.env` value)
+  is captured when the container is created. After editing `.env` run
+  `docker compose up -d rails sidekiq`; `docker restart` keeps the old value.
 - Conversation control mode lives in the AI service; setting a conversation
   back to **Pending** from the dashboard returns it to the AI.
 
