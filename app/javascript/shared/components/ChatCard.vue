@@ -44,7 +44,13 @@ export default {
       <p class="!mb-1 text-n-slate-11">
         {{ description }}
       </p>
-      <CardButton v-for="action in actions" :key="action.id" :action="action" />
+      <div class="flex flex-wrap gap-1 mt-1">
+        <CardButton
+          v-for="action in actions"
+          :key="action.id"
+          :action="action"
+        />
+      </div>
     </div>
   </div>
 </template>

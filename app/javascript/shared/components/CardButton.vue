@@ -67,6 +67,8 @@ export default {
 
 <style scoped lang="scss">
 .action-button {
-  @apply items-center rounded-lg flex font-medium justify-center mt-1 p-0 w-full;
+  @apply items-center rounded-md inline-flex text-xs font-medium justify-center px-2 py-1 grow;
+  min-height: 1.75rem;
+  flex-basis: 6rem;
 }
 </style>
