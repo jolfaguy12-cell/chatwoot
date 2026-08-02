@@ -45,6 +45,17 @@ No Rails migrations were added — all AI state lives in the service's SQLite.
 - Conversation control mode lives in the AI service; setting a conversation
   back to **Pending** from the dashboard returns it to the AI.
 
+## Chatwoot-side settings the agent depends on (2026-08-02)
+
+These live in the Chatwoot DB, not in the service, so they survive a service
+redeploy but are lost on a DB restore from before that date:
+
+- **Inbox greeting** is enabled on inboxes 1 and 12 with the Persian capability
+  list ("what I can do for you"). It is the automatic first bubble of every
+  conversation; the agent is told not to repeat the list in its own reply.
+- **Label `spam`** exists on account 2. The agent applies it (and hands off to
+  Telegram) after three turns of a customer sending one request in fragments.
+
 ## Tests
 
 ```
