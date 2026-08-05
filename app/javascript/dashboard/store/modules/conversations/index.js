@@ -12,7 +12,9 @@ const state = {
   allConversations: [],
   attachments: {},
   listLoadingStatus: true,
-  chatStatusFilter: wootConstants.STATUS_TYPE.OPEN,
+  // Behdashtik: AI-owned conversations sit in `pending`, so the stock `open`
+  // default hides every conversation the bot is handling.
+  chatStatusFilter: wootConstants.STATUS_TYPE.ALL,
   chatSortFilter: wootConstants.SORT_BY_TYPE.LATEST,
   currentInbox: null,
   selectedChatId: null,

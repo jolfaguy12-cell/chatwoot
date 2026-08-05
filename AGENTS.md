@@ -151,6 +151,7 @@ Records website page visits as private notes on the active conversation, and as 
 The AI customer-support agent is a separate service at `/root/behdashtik-ai-agent` (systemd `bdsk-ai-agent`, FastAPI + LangGraph, SQLite state, OpenRouter models). Chatwoot-side pieces: AgentBot on inboxes 12 and 1, Rails proxy `app/controllers/api/v1/accounts/behdashtik_ai/`, dashboard section Settings → AI Assistant (`settings/behdashtikAI/`), profile Telegram panel, and journey-service page-context custom_attributes.
 - Docs: `docs/behdashtik-ai-support.md` (Chatwoot side), `/root/behdashtik-ai-agent/README.md` + `docs/runbook.md` (service).
 - Conversation `pending` = AI-owned, `open` = human. Never enable Captain on the same inbox.
+- Because AI conversations are `pending` **and unassigned**, the stock conversation-list defaults (`me` + `open`) open every inbox on an empty list. This fork defaults both to `all` — `ChatList.vue` (`activeAssigneeTab`, `activeStatus`, `setFiltersFromUISettings`) and `store/modules/conversations/index.js` (`chatStatusFilter`). Re-apply after a Chatwoot upgrade. A per-user choice in the status dropdown still wins (it persists in `ui_settings.conversations_filter_by`).
 - **Two stores, one service**: inbox 12 (behdashtik.ir) is answered from the main hub, inbox 1 (dev) from the dev hub. The inbox is the only switch — see "Two sites, two hubs" in the runbook.
 
 ### Widget Channel Links
