@@ -15,8 +15,13 @@ export default {
     ...mapGetters({
       widgetColor: 'appConfig/getWidgetColor',
     }),
+    // Behdashtik: an action may carry its own brand colour (e.g. the Basalam
+    // button); everything else keeps following the widget colour.
+    buttonColor() {
+      return this.action.color || this.widgetColor;
+    },
     textColor() {
-      return getContrastingTextColor(this.widgetColor);
+      return getContrastingTextColor(this.buttonColor);
     },
     isLink() {
       return this.action.type === 'link';
@@ -45,8 +50,8 @@ export default {
     class="action-button button"
     :href="action.uri"
     :style="{
-      background: widgetColor,
-      borderColor: widgetColor,
+      background: buttonColor,
+      borderColor: buttonColor,
       color: textColor,
     }"
     target="_blank"
@@ -58,7 +63,7 @@ export default {
     v-else
     :key="action.payload"
     class="action-button button !bg-n-background dark:!bg-n-alpha-black1 text-n-brand"
-    :style="{ borderColor: widgetColor, color: widgetColor }"
+    :style="{ borderColor: buttonColor, color: buttonColor }"
     @click="onClick"
   >
     {{ action.text }}

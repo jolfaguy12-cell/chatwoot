@@ -19,6 +19,21 @@ Chatwoot repo.
 - Env (`.env`): `BEHDASHTIK_AI_SERVICE_URL`, `BEHDASHTIK_AI_ADMIN_TOKEN` —
   used by the Rails proxy below.
 
+### Two agents, one panel
+
+The Basalam shop has its own agent (`/root/behdashtik-basalam-agent`, systemd
+`bdsk-basalam-agent`, AgentBot "Basalam AI" on inbox 13) with its own SQLite,
+prompts, models and operator Telegram bot. Both are managed from the same
+**AI Assistant** section; the `service` query parameter picks which one:
+
+| `service` | URL env | Token env |
+|---|---|---|
+| `site` (default) | `BEHDASHTIK_AI_SERVICE_URL` | `BEHDASHTIK_AI_ADMIN_TOKEN` |
+| `basalam` | `BEHDASHTIK_AI_BASALAM_SERVICE_URL` | `BEHDASHTIK_AI_BASALAM_ADMIN_TOKEN` |
+
+An unknown value falls back to `site`. Operators link to each bot separately —
+Profile settings shows one Telegram panel per service.
+
 ## Chatwoot-side code
 
 | Path | Purpose |
@@ -26,8 +41,8 @@ Chatwoot repo.
 | `app/controllers/api/v1/accounts/behdashtik_ai/proxy_controller.rb` | Authenticated pass-through `/api/v1/accounts/:id/behdashtik_ai/*` → AI service `/admin/v1/*`. Admin-only except the agent allowlist (telegram self-service, evaluation submit). Injects `X-Chatwoot-User-Id/Name`; overwrites evaluation rater identity server-side. |
 | `app/services/behdashtik/visitor_journey_service.rb#update_page_context` | Merges `behdashtik_current_url` / `behdashtik_product_slug` / title / seen-at into conversation `custom_attributes` (reaches the agent in webhook payloads). Journey private notes unchanged. |
 | `app/javascript/dashboard/routes/dashboard/settings/behdashtikAI/` | The **AI Assistant** settings section (tabs: Overview, Providers & Models, Prompts, Content Gaps, Responses, Handoffs & Telegram, Change Log, Test Chat). |
-| `app/javascript/dashboard/routes/dashboard/settings/profile/TelegramConnection.vue` | Profile-settings panel: link/unlink Telegram, notification preference. |
-| `app/javascript/dashboard/api/behdashtikAI.js` | Axios helper for the proxy. |
+| `app/javascript/dashboard/routes/dashboard/settings/profile/TelegramConnection.vue` | Profile-settings panel: link/unlink Telegram, notification preference. Takes a `service` prop — rendered once per agent. |
+| `app/javascript/dashboard/api/behdashtikAI.js` | Axios helper for the proxy. Default export follows the panel's `service` ref; `forService(name)` pins one agent. |
 | `app/javascript/dashboard/i18n/locale/en/behdashtikAI.json` | UI strings (dashboard is English by decision; customer-facing text is Persian and lives in the AI service's prompt store). |
 | Sidebar entry | `components-next/sidebar/Sidebar.vue` → Settings → "AI Assistant". |
 
@@ -44,6 +59,26 @@ No Rails migrations were added — all AI state lives in the service's SQLite.
   `docker compose up -d rails sidekiq`; `docker restart` keeps the old value.
 - Conversation control mode lives in the AI service; setting a conversation
   back to **Pending** from the dashboard returns it to the AI.
+- A card action may carry an optional `color` (hex) that overrides the widget
+  colour for that one button — `shared/components/CardButton.vue`. The AI
+  service uses it for the Basalam «ورود به باسلام» button (`#FF5F4A`). Fork
+  customization: re-apply after a Chatwoot upgrade.
+- Anything the assistant must not answer on its own (in-city delivery timing,
+  which only the warehouse knows) gets its **own tool** in the AI service that
+  sets the handoff itself. Telling the model in the prompt to "then call
+  request_human_handoff" is not reliable — it writes the promise and skips the
+  call. Same for facts the tool needs the model to state: put them in the tool's
+  return value, or it deflects with "قوانین فروشگاه را مطالعه کنید".
+- Same-day delivery exists only in **Qom** (the warehouse city), so
+  `ask_warehouse_delivery_time` takes a `city` and hands off only for Qom —
+  empty city means "ask first", another city is answered in place from the
+  registered shipping terms. Qom is handed off on holidays too (a courier may
+  still deliver), and the handoff reason carries the Jalali date so support has
+  the context.
+- The Jalali working-day calendar is `app/services/jalali.py` in the AI service
+  (`jdatetime` + `iranholidays`, both offline — Iranian holiday APIs are not
+  reachable from this host). It supplies today's Jalali date, whether it is a
+  holiday, and the next working day.
 
 ## Chatwoot-side settings the agent depends on (2026-08-02)
 
