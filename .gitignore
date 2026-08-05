@@ -111,3 +111,9 @@ graphify-out/manifest.json
 graphify-out/cache/
 graphify-out/*.html
 graphify-out/*.svg
+
+# local .env backups — never commit
+.env.backup.*
+
+# the WordPress plugin is its own repo (jolfaguy12-cell/wp-plugin), cloned here for convenience
+wp-plugin/
