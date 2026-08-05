@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
+import { SERVICES, service } from 'dashboard/api/behdashtikAI';
 import Overview from './pages/Overview.vue';
 import ProvidersModels from './pages/ProvidersModels.vue';
 import Prompts from './pages/Prompts.vue';
@@ -30,13 +31,30 @@ const activeComponent = () =>
 
 <template>
   <div class="flex flex-col w-full gap-4">
-    <div>
-      <h1 class="text-2xl font-medium text-n-slate-12">
-        {{ t('BEHDASHTIK_AI.TITLE') }}
-      </h1>
-      <p class="mt-1 text-sm text-n-slate-11">
-        {{ t('BEHDASHTIK_AI.DESCRIPTION') }}
-      </p>
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <h1 class="text-2xl font-medium text-n-slate-12">
+          {{ t('BEHDASHTIK_AI.TITLE') }}
+        </h1>
+        <p class="mt-1 text-sm text-n-slate-11">
+          {{ t('BEHDASHTIK_AI.DESCRIPTION') }}
+        </p>
+      </div>
+      <div class="flex p-1 rounded-lg bg-n-alpha-1">
+        <button
+          v-for="key in SERVICES"
+          :key="key"
+          class="px-3 py-1.5 text-sm rounded-md transition-colors"
+          :class="
+            service === key
+              ? 'bg-n-solid-1 text-n-slate-12 font-medium shadow-sm'
+              : 'text-n-slate-11 hover:text-n-slate-12'
+          "
+          @click="service = key"
+        >
+          {{ t(`BEHDASHTIK_AI.SERVICES.${key.toUpperCase()}`) }}
+        </button>
+      </div>
     </div>
     <div class="flex flex-wrap gap-1 border-b border-n-weak">
       <button
@@ -53,6 +71,6 @@ const activeComponent = () =>
         {{ t(`BEHDASHTIK_AI.TABS.${tab.key.toUpperCase()}`) }}
       </button>
     </div>
-    <component :is="activeComponent()" />
+    <component :is="activeComponent()" :key="service" />
   </div>
 </template>

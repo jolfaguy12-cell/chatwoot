@@ -4,6 +4,10 @@
     "DESCRIPTION": "Manage the Behdashtik AI customer-support agent: providers, models, prompts, quality and human handoff.",
     "SIDEBAR_LABEL": "AI Assistant",
     "SERVICE_DOWN": "The AI service is unreachable. Check that bdsk-ai-agent is running.",
+    "SERVICES": {
+      "SITE": "Website",
+      "BASALAM": "Basalam"
+    },
     "COMMON": {
       "REFRESH": "Refresh",
       "SAVE": "Save",

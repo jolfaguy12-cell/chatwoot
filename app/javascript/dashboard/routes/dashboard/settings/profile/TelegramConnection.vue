@@ -2,11 +2,17 @@
 import { onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useAlert } from 'dashboard/composables';
-import AIApi from 'dashboard/api/behdashtikAI';
+import { forService } from 'dashboard/api/behdashtikAI';
 import SectionLayout from '../account/components/SectionLayout.vue';
+
+const props = defineProps({
+  // each agent runs its own operator bot, so each needs its own link
+  service: { type: String, default: 'site' },
+});
 
 const { t } = useI18n();
 
+const AIApi = forService(props.service);
 const status = ref(null);
 const available = ref(true);
 const connecting = ref(false);
@@ -72,7 +78,9 @@ onMounted(load);
 <template>
   <SectionLayout
     v-if="available"
-    :title="t('TELEGRAM_CONNECTION.TITLE')"
+    :title="`${t('TELEGRAM_CONNECTION.TITLE')} — ${t(
+      `BEHDASHTIK_AI.SERVICES.${service.toUpperCase()}`
+    )}`"
     :description="t('TELEGRAM_CONNECTION.NOTE')"
     with-border
   >

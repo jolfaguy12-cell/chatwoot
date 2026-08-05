@@ -338,7 +338,8 @@ export default {
         <NotificationPreferences />
       </SectionLayout>
     </Policy>
-    <TelegramConnection />
+    <TelegramConnection service="site" />
+    <TelegramConnection service="basalam" />
     <SectionLayout
       with-border
       :title="$t('PROFILE_SETTINGS.FORM.ACCESS_TOKEN.TITLE')"

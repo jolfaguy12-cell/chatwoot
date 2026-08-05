@@ -3,6 +3,13 @@ class Api::V1::Accounts::BehdashtikAi::ProxyController < Api::V1::Accounts::Base
   # Chatwoot is the auth layer: administrators reach everything; agents only
   # the self-service allowlist below. The service's bearer token never leaves
   # the server.
+  # Two agents share this panel: the website assistant and the Basalam shop
+  # assistant. `service` picks which one a request is routed to.
+  SERVICES = {
+    'site' => %w[BEHDASHTIK_AI_SERVICE_URL BEHDASHTIK_AI_ADMIN_TOKEN],
+    'basalam' => %w[BEHDASHTIK_AI_BASALAM_SERVICE_URL BEHDASHTIK_AI_BASALAM_ADMIN_TOKEN]
+  }.freeze
+
   AGENT_ALLOWED_PATHS = [
     ['POST', %r{\Atelegram/link_code\z}],
     ['GET', %r{\Atelegram/self\z}],
@@ -20,7 +27,7 @@ class Api::V1::Accounts::BehdashtikAi::ProxyController < Api::V1::Accounts::Base
       request.method.downcase,
       "#{service_url}/admin/v1/#{proxy_path}",
       headers: forward_headers,
-      query: request.query_parameters.except('proxy_path'),
+      query: request.query_parameters.except('proxy_path', 'service'),
       body: forward_body,
       timeout: FORWARD_TIMEOUT_SECONDS
     )
@@ -37,8 +44,16 @@ class Api::V1::Accounts::BehdashtikAi::ProxyController < Api::V1::Accounts::Base
     params[:proxy_path].to_s
   end
 
+  def service
+    SERVICES.key?(params[:service]) ? params[:service] : 'site'
+  end
+
   def service_url
-    ENV.fetch('BEHDASHTIK_AI_SERVICE_URL', '').chomp('/')
+    ENV.fetch(SERVICES[service].first, '').chomp('/')
+  end
+
+  def admin_token
+    ENV.fetch(SERVICES[service].last, '')
   end
 
   def check_access
@@ -51,7 +66,7 @@ class Api::V1::Accounts::BehdashtikAi::ProxyController < Api::V1::Accounts::Base
 
   def forward_headers
     {
-      'Authorization' => "Bearer #{ENV.fetch('BEHDASHTIK_AI_ADMIN_TOKEN', '')}",
+      'Authorization' => "Bearer #{admin_token}",
       'Content-Type' => 'application/json',
       'X-Chatwoot-User-Id' => current_user.id.to_s,
       'X-Chatwoot-User-Name' => current_user.name.to_s
