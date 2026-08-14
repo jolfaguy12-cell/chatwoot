@@ -24,6 +24,7 @@ DESCRIPTION_LIMIT = 1400
 # Search hits carry a snippet so the agent can judge relevance without pulling
 # every candidate in full — cheaper than one get_product_details per product.
 SEARCH_SUMMARY_CHARS = 150
+MAX_SEARCH_RESULTS = 8       # سقف فهرست بعد از افزودن نتیجهٔ جستجوی کوتاه‌شده
 
 # Expiry/shelf-life facts hide in prose and attributes; surface them explicitly
 # so they are never lost to description truncation. (Persian stores write e.g.
@@ -299,6 +300,16 @@ MAX_CARDS = 4                # distinct products per answer
 MAX_VARIATION_BUTTONS = 6    # models of one product (شماره/رنگ/حجم) on its card
 MAX_TOTAL_CARDS = 4
 
+# «تکی» و «بسته/عمده» دو آگهی جدای غرفه‌اند، نه دو مدل از یک آگهی. مشتری کارت
+# آگهی تکی را می‌فرستد و می‌پرسد «پک موجوده؟»، و مدل چون کارت جلوی چشمش است
+# سراغ جستجوی تازه نمی‌رود و از رنگبندی همان آگهی جواب می‌دهد — یعنی «فقط تکی
+# داریم»، در حالی که پک موجود است. پس آگهی‌های هم‌خانواده همیشه همراه جزئیات
+# محصول می‌آیند و به تصمیم مدل واگذار نمی‌شوند.
+SIBLING_QUERY_WORDS = 3      # «خط لب دراگون» — عبارتی که فهرست نامزدها را می‌آورد
+SIBLING_ANCHOR_WORDS = 2     # «خط لب» — دستهٔ کالا باید یکی باشد
+SIBLING_OVERLAP = 0.5        # و بیش از نیمِ واژه‌های عنوان کوتاه‌تر مشترک باشد
+MAX_SIBLINGS = 3
+
 
 def _product_image(product: dict) -> str:
     images = product.get("images") or []
@@ -409,6 +420,51 @@ async def _pick_by_category(candidates: list[dict], count: int, matches: dict) -
     return picks
 
 
+def _title_tokens(name: str) -> set[str]:
+    return set(re.sub(r"[A-Za-z0-9(\-–—|]+", " ", (name or "").replace("‌", " ")).split())
+
+
+def _is_sibling(name: str, tokens: set[str], anchor: str) -> bool:
+    """همان کالا با آگهی دیگر، نه هر همسایه‌ای در همان دسته.
+
+    پیشوند مشترک به‌تنهایی کافی نیست: «پک کرم دست و بالم لب کرومی» و «پک کرم دست
+    ۶ عددی سادور» هر دو با «پک کرم دست» شروع می‌شوند ولی یک کالا نیستند. پس
+    دستهٔ کالا (دو واژهٔ اول) باید یکی باشد **و** بیشتر واژه‌های عنوان مشترک.
+    شمردن واژه‌ها روی عنوان کوتاه‌تر است تا «تکی» و «بستهٔ ۱۲ عددی» — که یکی‌شان
+    همیشه چند واژه بلندتر است — از هم جدا نیفتند.
+    """
+    other = _title_tokens(name)
+    if not other or _trim_title(name, SIBLING_ANCHOR_WORDS) != anchor:
+        return False
+    return len(tokens & other) / min(len(tokens), len(other)) >= SIBLING_OVERLAP
+
+
+async def _sibling_listings(product: dict) -> list[dict]:
+    """آگهی‌های دیگر همین کالا در غرفه (تکی در برابر بسته و عمده).
+
+    نتیجه از فیلتر باسلام هم رد می‌شود، پس آگهی‌ای که در غرفه نیست اصلاً به مدل
+    نشان داده نمی‌شود.
+    """
+    name = product.get("name") or ""
+    anchor = _trim_title(name, SIBLING_ANCHOR_WORDS)
+    tokens = _title_tokens(name)
+    if len(anchor.split()) < SIBLING_ANCHOR_WORDS or not tokens:
+        return []
+    try:
+        rows = await hub_client.product_search(_trim_title(name, SIBLING_QUERY_WORDS),
+                                               per_page=10)
+        family = [r for r in rows if _is_sibling(r.get("name") or "", tokens, anchor)]
+        if not family:
+            return []
+        matches = await basalam_client.match_titles([r.get("name", "") for r in family])
+    except (HubUnavailable, basalam_client.CatalogUnavailable):
+        # این فهرست افزوده است؛ نبودنش نباید جواب اصلی محصول را از بین ببرد
+        return []
+    seen = {product.get("id"), product.get("basalam_id")}
+    return [p for p in basalam_overlay.overlay_many(family, matches)
+            if p.get("id") not in seen and p.get("basalam_id") not in seen][:MAX_SIBLINGS]
+
+
 def build_tools(ctx: ToolContext) -> list[StructuredTool]:
     async def get_current_page_product() -> str:
         slug = ctx.product_slug or persian.slug_from_url(ctx.page_url)
@@ -430,8 +486,21 @@ def build_tools(ctx: ToolContext) -> list[StructuredTool]:
         return out
 
     async def search_products(query: str = "", tag: str = "") -> str:
+        widened = ""
         try:
             results = await hub_client.product_search(query, tag=tag)
+            short = _trim_title(query, SIBLING_QUERY_WORDS)
+            if short and len(query.split()) > SIBLING_QUERY_WORDS:
+                # عبارت بلند دو جور کالای موجود را پنهان می‌کند: یا هیچ نمی‌دهد
+                # (و فهرست خالی برای مدل یعنی «نداریم»)، یا فقط بخشی از خانواده را
+                # می‌آورد — «خط لب دراگون نود پک کامل» تکی‌ها را می‌دهد و بسته را نه.
+                # جستجوی کوتاه‌ترِ همان عبارت، خانواده را کامل می‌کند.
+                extra = await hub_client.product_search(short, tag=tag)
+                seen = {p.get("id") for p in results}
+                fresh = [p for p in extra if p.get("id") not in seen]
+                if fresh:
+                    widened = short
+                    results = (results + fresh)[:MAX_SEARCH_RESULTS]
         except HubUnavailable as e:
             _record(ctx, "search_products", {"query": query, "tag": tag}, False, str(e))
             return "خطا: جستجوی محصولات فعلاً در دسترس نیست."
@@ -443,7 +512,7 @@ def build_tools(ctx: ToolContext) -> list[StructuredTool]:
             _record(ctx, "search_products", {"query": query, "tag": tag}, False, str(e))
             return CATALOG_DOWN
         results = basalam_overlay.overlay_many(results, matches)
-        _record(ctx, "search_products", {"query": query, "tag": tag}, True,
+        _record(ctx, "search_products", {"query": query, "tag": tag, "widened": widened}, True,
                 f"{len(results)} results in basalam")
         if not results:
             return "هیچ محصولی با این عبارت در غرفهٔ باسلام پیدا نشد."
@@ -459,6 +528,11 @@ def build_tools(ctx: ToolContext) -> list[StructuredTool]:
             if p.get("summary"):
                 line += f"\n  توضیح: {p['summary'][:SEARCH_SUMMARY_CHARS]}"
             lines.append(line)
+        if widened:
+            lines.append(f"نتیجهٔ جستجوی کوتاه‌ترِ «{widened}» هم به این فهرست اضافه شد،"
+                         " چون عبارت کامل همهٔ آگهی‌های همان کالا (مثلاً بستهٔ همان محصول)"
+                         " را نمی‌آورد. عنوان‌ها را بخوان و فقط چیزی را که واقعاً در"
+                         " فهرست هست معرفی کن.")
         out = wrap_data("product_search", "\n".join(lines))
         ctx.data_outputs.append(out)
         return out
@@ -531,7 +605,16 @@ def build_tools(ctx: ToolContext) -> list[StructuredTool]:
                     " اسم همان محصول را با search_products جستجو کن.")
         _record(ctx, "get_product_details", {"product_id": product_id}, True,
                 product.get("name", ""))
-        out = wrap_data("product", format_product(product))
+        body = format_product(product)
+        siblings = await _sibling_listings(product)
+        if siblings:
+            body += ("\n\nآگهی‌های مرتبط در غرفه (تکی، بسته، عمده، حجم دیگر):\n"
+                     + "\n".join(_card_evidence(p, p["id"]) for p in siblings)
+                     + "\nعنوان‌ها را بخوان. اگر مشتری سراغ پک، بسته، ست، عمده یا حجم"
+                       " بزرگ‌تر را گرفت و اینجا آگهی‌اش هست، همان را معرفی کن و کارتش را"
+                       " بفرست؛ آن‌وقت «فقط تکی داریم» غلط است. آگهی‌ای را که عنوانش"
+                       " کالای دیگری است به‌جای این محصول جا نزن.")
+        out = wrap_data("product", body)
         ctx.data_outputs.append(out)
         return out
 
