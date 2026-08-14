@@ -4,6 +4,7 @@ bounded tool-calling loop on the main response model."""
 
 import logging
 import re
+from difflib import SequenceMatcher
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from pydantic import BaseModel, Field
@@ -48,6 +49,30 @@ def _provider_handoff(state: AgentState, error: LLMFailure, stage: str) -> Agent
 # ---------------------------------------------------------------------------
 # classify
 # ---------------------------------------------------------------------------
+
+# «شما به من پیام دادین بابت ارسال؟» — هیچ ابزاری نمی‌گوید غرفه بیرون از همین نخ
+# چه پیامی فرستاده یا چه تماسی گرفته، پس هر جوابی حدس است. ایجنت گفت «من پیامی
+# ندادم، احتمالاً از طرف شخص دیگری بوده» و این یک انکارِ بی‌سند بود. چنین سؤالی
+# مستقیم به انسان می‌رود، بدون اینکه مدل اصلاً وسوسه شود جواب بدهد.
+CONTACT_CLAIM = re.compile(
+    r"(شما|شماها|غرفه|فروشگاه|پشتیبان\w*)"
+    r"(?:(?!جواب|پاسخ)[^\n؟?]){0,30}"
+    r"(پیام|پیغام|پیامک|اس\s*ام\s*اس|تماس|زنگ|ایمیل)"
+    r"(?:(?!جواب|پاسخ)[^\n؟?]){0,20}"
+    # هم دوم‌شخص («دادید») و هم سوم‌شخص و نقلی («فرستاده»، «گرفته بود»)
+    r"(داده?ید|دادین|دادی|داده|زدید|زدین|زده|گرفتید|گرفتین|گرفته"
+    r"|فرستادید|فرستادین|فرستاده|کردید|کردین|کرده)"
+)
+CONTACT_CLAIM_KIND = "contact_claim"
+
+# «عکس واقعی محصول رو می‌فرستید؟» — ایجنت عکس ندارد و نمی‌تواند بفرستد؛ عکسِ
+# غرفه هم همان است که مشتری روی صفحهٔ محصول می‌بیند. مدیر باید خودش عکس بگیرد و
+# بفرستد، پس این درخواست مستقیم به تلگرام اپراتورها می‌رود.
+IMAGE_NOUN = re.compile(r"عکس|تصویر|فیلم|ویدی?و|ویدئو")
+IMAGE_ASK = re.compile(r"بفرست|می‌?فرست|بذار|بگذار|دارید|دارین|داری|بده|بدید|بدین"
+                       r"|میشه|می‌?شه|امکان|لطفا|ببینم|نشون")
+IMAGE_REQUEST_KIND = "product_image"
+
 
 class IntentResult(BaseModel):
     intent: str = Field(description="product | order | cart | policy | greeting | human | other")
@@ -94,6 +119,12 @@ async def classify_node(state: AgentState) -> AgentState:
     # (LangGraph does not persist state mutations made inside edges)
     if state["intent"] == "human":
         return _handoff(state, "user_request", "customer asked for a human operator")
+    if CONTACT_CLAIM.search(state["text"]):
+        return _handoff(state, CONTACT_CLAIM_KIND,
+                        f"customer asks about a message we supposedly sent: {state['text'][:200]}")
+    if IMAGE_NOUN.search(state["text"]) and IMAGE_ASK.search(state["text"]):
+        return _handoff(state, IMAGE_REQUEST_KIND,
+                        f"customer asks for a product photo: {state['text'][:200]}")
     if not state["in_scope"]:
         state["outcome"] = "refuse"
     return state
@@ -236,7 +267,8 @@ async def agent_node(state: AgentState) -> AgentState:
                 kind = "empty" if any(c["ok"] for c in ctx.calls) else ""
             else:
                 # `draft` stays as the fallback if the loop runs out of iterations
-                kind = ("stockout" if _claims_unbacked_stockout(ctx, draft)
+                kind = ("repeat" if _repeats_last_reply(state, draft)
+                        else "stockout" if _claims_unbacked_stockout(ctx, draft)
                         else "restock" if _needs_restock(state, ctx)
                         else "search" if _needs_search(state, ctx, draft)
                         else "cards" if _needs_cards(state, ctx)
@@ -300,6 +332,12 @@ async def agent_node(state: AgentState) -> AgentState:
                         ctx.handoff_requested)
     if not draft.strip():
         return _handoff(state, "provider_error", "empty response from model after tool loop")
+    if _repeats_last_reply(state, draft):
+        # تذکر یک بار داده شد و پاسخ باز هم همان جملهٔ قبلی است: یعنی برای سؤال
+        # تازهٔ مشتری داده‌ای نداریم. سه بار فرستادن یک جمله بدتر از انتقال است.
+        state["draft"] = draft
+        return _handoff(state, "agent_decision",
+                        "the model could only repeat its previous reply")
     state["draft"] = draft.strip()
     return state
 
@@ -464,6 +502,30 @@ NUDGE_STOCKOUT = (
     " [ناموجود] نشان داد حق داری بگویی ناموجود است."
 )
 
+# سه بار پشت سر هم «سفارش شما فردا ارسال می‌شود» برای سه سؤال متفاوت رفت: مشتری
+# پرسید «چند روزه می‌رسه» و «مسافرم»، و جواب عوض نشد. تکرارِ عین جمله یعنی برای
+# سؤال تازه چیزی نداریم، نه اینکه جواب همان است.
+REPEAT_RATIO = 0.9
+
+
+def _repeats_last_reply(state: AgentState, draft: str) -> bool:
+    last = next((h.get("content", "") for h in reversed(state.get("history") or [])
+                 if h.get("role") == "assistant"), "")
+    if not last or not draft.strip():
+        return False
+    return SequenceMatcher(None, persian.normalize(last),
+                           persian.normalize(draft)).ratio() >= REPEAT_RATIO
+
+
+NUDGE_REPEAT = (
+    "پاسخی که نوشته‌ای تقریباً همان پیام قبلیِ خودت است. مشتری سؤال تازه‌ای پرسیده،"
+    " پس همان جمله را دوباره نفرست. اگر سؤالش وجه تازه‌ای دارد — مثلاً «چند روز طول"
+    " می‌کشد تا برسد» در برابر «کی ارسال می‌شود» — همان را از داده جواب بده. اگر"
+    " واقعاً برای سؤال تازه داده‌ای نداری، جملهٔ تکراری را ننویس و"
+    " request_human_handoff را صدا بزن."
+)
+
+
 NUDGE_EMPTY = (
     "پاسخت خالی بود. با تکیه بر همان داده‌های ابزار، در یکی دو جملهٔ کوتاه و مهربان"
     " جواب مشتری را بنویس. اگر کارت فرستادی، بگو چه فرستادی و چطور می‌تواند سفارش"
@@ -472,7 +534,7 @@ NUDGE_EMPTY = (
 
 NUDGES = {"search": NUDGE_SEARCH, "cards": NUDGE_CARDS, "stockout": NUDGE_STOCKOUT,
           "authenticity": NUDGE_AUTHENTICITY, "restock": NUDGE_RESTOCK,
-          "empty": NUDGE_EMPTY}
+          "empty": NUDGE_EMPTY, "repeat": NUDGE_REPEAT}
 
 
 def _stockout_supported(outputs: list[str]) -> bool:

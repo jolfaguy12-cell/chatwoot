@@ -59,11 +59,21 @@ async def _request(token: str, method: str, path: str, **kwargs) -> dict:
     return {}
 
 
+# در باسلام همهٔ پیام‌های غرفه یک‌شکل‌اند و مشتری نمی‌داند با ایجنت حرف می‌زند یا
+# با همکار انسانی. هر پیامی که از این سرویس برای مشتری می‌رود این امضا را دارد.
+SIGNATURE = "دستیار هوش مصنوعی بهداشتیک"
+
+
 # --- bot-token actions -----------------------------------------------------
 
 async def send_message(conversation_id: int, content: str, *, private: bool = False,
                        content_attributes: dict | None = None,
                        content_type: str | None = None) -> dict:
+    # امضا اینجا زده می‌شود، نه در متن پاسخ: تنها گلوگاهی که هر پیامِ عمومیِ این
+    # سرویس از آن رد می‌شود، پس مسیر تازه‌ای هم که بعداً اضافه شود امضا را جا
+    # نمی‌اندازد. یادداشت‌های خصوصی (private) پیامِ مشتری نیستند و امضا نمی‌گیرند.
+    if not private and content and not content.rstrip().endswith(SIGNATURE):
+        content = f"{content.rstrip()}\n\n{SIGNATURE}"
     payload: dict = {"content": content, "message_type": "outgoing", "private": private}
     if content_attributes:
         payload["content_attributes"] = content_attributes

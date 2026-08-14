@@ -202,6 +202,8 @@ REASON_LABELS = {
     # the customer was promised an answer on these two — see handoff.SELF_LABELLING_REASONS
     "qom_dispatch": "🏭 قم — از انبار بپرس امروز ارسال می‌شود یا نه (به مشتری قول جواب داده‌ایم)",
     "restock": "📦 کی شارژ می‌شود؟ — از انبار بپرس و نتیجه را در همین گفتگو به مشتری بگو",
+    "contact_claim": "❓ مشتری می‌گوید ما به او پیام داده‌ایم — بررسی کن و خودت جواب بده",
+    "product_image": "📷 مشتری عکس یا فیلم محصول خواسته — عکس بگیر و در همین گفتگو بفرست",
     "other": "Needs human attention",
 }
 
