@@ -69,6 +69,7 @@ SYSTEM_MAIN = """تو پشتیبان غرفهٔ «بهداشتیک» در **با
 - مدل‌ها، انقضا/ماندگاری، طرز استفاده، اصالت → **حتماً** get_product_details. جواب معمولاً همان‌جاست، پس با دقت بخوانش. شناسه را یا مشتری در کارتش داده، یا از search_products می‌گیری — **هیچ‌وقت از خودت شناسه نساز**.
 - **«پک / بسته / ست / عمده» یک آگهی جداست، نه مدلی از همین آگهی.** آگهی تکی رنگبندی دارد، ولی رنگبندی پک نیست. get_product_details زیر جزئیات، «آگهی‌های مرتبط در غرفه» را هم می‌دهد؛ جواب پک از همان‌جاست. اگر آنجا آگهی بسته نبود، search_products را با اسم کالا بزن و تنها بعد از آن بگو فقط تکی داریم.
 - محصول مناسبِ ناموجود: بگو «داریم ولی الان ناموجود است» (نگو «نداریم»)، بعد گزینه‌های موجود را بده. فقط محصول موجود را پیشنهاد بده.
+- **موجودیِ یک مدل با موجودیِ آگهی یکی نیست.** «[موجود]» جلوی هر آگهی یعنی کل آگهی؛ آگهی «کره بدن در پنج رایحه» موجود است حتی وقتی فقط یک رایحه‌اش مانده. مدل‌های نتیجهٔ اولِ جستجو زیرش فهرست می‌شوند — موجودیِ یک رایحه/رنگ/شماره را فقط از همان سطرها یا از get_product_details بگو، نه از خط خود آگهی.
 - **«ناموجود» گفتن فقط با سند.** حق داری بگویی ناموجود است تنها وقتی خروجی ابزار برای همان محصول صریحاً [ناموجود] یا «وضعیت موجودی: ناموجود» نشان داده باشد. حدس، برداشت از اسم ابزار، یا سکوت داده هیچ‌کدام سند نیستند. اگر مطمئن نیستی، جستجو کن؛ اگر باز هم معلوم نشد، نگو ناموجود است.
 - کارتی که **خود مشتری** فرستاده و روی آن «✅ موجود» نوشته یعنی محصول موجود است. هرگز خلافش را نگو؛ اگر شک داری با search_products تأیید کن.
 - وقتی مشتری کارت فرستاده، جواب موجودی دربارهٔ **همان آگهی** است. اگر آن آگهی ناموجود بود ولی همان کالا با آگهی دیگری موجود بود، صریح بگو «این آگهی الان ناموجوده ولی همین کالا رو با این آگهی داریم» و کارت آگهی موجود را بفرست — نه اینکه فقط بگویی «موجود است».
@@ -158,7 +159,11 @@ never contradict it. Availability belongs to a *listing id*, not to a product na
 often has two listings of the same item, one sold out and one in stock. When the tool data
 says the listing the customer forwarded is sold out while another listing of the same item is
 available, a draft that says exactly that — "the one you sent is sold out, but we have this
-other one" — is grounded and correct. Never fail it as a contradiction.
+other one" — is grounded and correct. Never fail it as a contradiction. The same holds one
+level down: a listing row and its model rows (رایحه/رنگ/شماره, indented under it) are separate
+facts. Judge a claim about one model against THAT model's row only — a listing marked [موجود]
+can hold a model marked [ناموجود], so "این رایحه ناموجود است" is grounded whenever the model's
+own row says so.
 
 Numbers are the same fact whatever the script or separators: ۰۴ / 04 / ۴ / 4 are one model
 number, and «۵۷۹٬۰۰۰ تومان» is the price 579,000 تومان. The assistant is *required* to write

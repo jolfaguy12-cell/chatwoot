@@ -134,6 +134,7 @@ async def agent_node(state: AgentState) -> AgentState:
     ctx = ToolContext(
         conversation_id=state["conversation_id"],
         intent=state.get("intent", ""),
+        text=state.get("text", ""),
         product_slug=state.get("product_slug", ""),
         page_url=state.get("page_url", ""),
         cart=state.get("cart") or {},
@@ -198,7 +199,8 @@ async def agent_node(state: AgentState) -> AgentState:
         # model starts blind and is pushed into answering without tool data
         messages.append(SystemMessage(content=_evidence(state.get("data_outputs") or [])))
         messages.append(SystemMessage(content=(
-            "پاسخ قبلی‌ات از بررسی کیفیت رد شد. اشکال: "
+            INTERNAL_NOTE
+            + "پاسخ قبلی‌ات از بررسی کیفیت رد شد. اشکال: "
             f"{state['critique']}\nپاسخ را اصلاح کن و فقط بر اساس داده‌های ابزارها بنویس."
             " اگر داده‌ای برای ادعایی نداری، آن ادعا را حذف کن یا ابزار را دوباره صدا بزن."
             " کارت‌هایی که در تلاش قبلی ساخته بودی لغو شدند و هنوز چیزی برای مشتری نرفته؛"
@@ -245,8 +247,11 @@ async def agent_node(state: AgentState) -> AgentState:
                 nudges_used.add(kind)
                 # a HumanMessage, not a SystemMessage: a system turn appended
                 # after the assistant's own reply came back empty every time,
-                # which cost the rewrite and, before the guard above, the draft
-                messages.append(HumanMessage(content=nudge))
+                # which cost the rewrite and, before the guard above, the draft.
+                # But arriving in the customer's turn, the note reads as the
+                # customer scolding us — the model answered it with «حق با شماست،
+                # اشتباه کردم، باید search_products می‌زدم». Hence the marker.
+                messages.append(HumanMessage(content=INTERNAL_NOTE + nudge))
                 continue
             break
         for call in ai_msg.tool_calls:
@@ -370,6 +375,15 @@ async def _available_twin(basalam_id: int) -> dict | None:
 # sending the product card themselves and then asks about it — details for a
 # product already in front of them must not trigger a card, or the model rewrites
 # a real answer into a contentless one-liner.
+# هر تذکر داخلی با این خط شروع می‌شود. بدون آن، مدل تذکر را حرفِ مشتری می‌گیرد و
+# به‌جای نوشتن پاسخ درست، از مشتری بابت «اشتباهش» عذرخواهی می‌کند و اسم ابزارها را
+# لو می‌دهد — مشتری آن‌وقت یک متن سرگردان می‌گیرد، نه جواب سؤالش.
+INTERNAL_NOTE = (
+    "[یادداشت داخلی سامانه — این را مشتری نفرستاده و نمی‌بیند. در پاسخت به آن،"
+    " به ابزارها و به اشتباه قبلی‌ات اشاره نکن، عذرخواهی نکن و قول بررسی مجدد نده؛"
+    " فقط پاسخ نهایی به مشتری را درست بنویس.]\n"
+)
+
 CARD_SOURCE_TOOLS = ("search_products",)
 
 NUDGE_CARDS = (
@@ -406,8 +420,11 @@ def _needs_authenticity(state: AgentState, ctx: ToolContext, draft: str) -> bool
 # being wrong costs a customer. The prompt rule held for «پنکک» but not here, so
 # the loop enforces it. Note «نداریم» contains «داریم»: both directions need data.
 AVAILABILITY_CLAIM = re.compile(r"داریم|موجود(ه| است|ی داریم)|هست")
+# ask_restock_date هم سند است: خودش آگهی و مدل‌هایش را از غرفه می‌گیرد. بدون آن،
+# پاسخِ درستِ «این رایحه ناموجود است» بی‌پشتوانه شمرده می‌شد و مدل به جستجوی
+# سطحِ آگهی هدایت می‌شد، که «موجود» می‌گوید و جواب درست را وارونه می‌کرد.
 SEARCH_TOOLS = ("search_products", "get_product_details", "get_current_page_product",
-                "suggest_gifts")
+                "suggest_gifts", "ask_restock_date")
 NUDGE_SEARCH = (
     "در پاسخت دربارهٔ داشتن یا نداشتن یک محصول اظهار نظر کرده‌ای ولی هیچ جستجویی"
     " نزده‌ای، پس این ادعا پشتوانه ندارد. **اول** search_products را با همان عبارت"

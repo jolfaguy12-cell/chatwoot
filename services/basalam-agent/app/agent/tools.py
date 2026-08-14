@@ -25,6 +25,7 @@ DESCRIPTION_LIMIT = 1400
 # every candidate in full — cheaper than one get_product_details per product.
 SEARCH_SUMMARY_CHARS = 150
 MAX_SEARCH_RESULTS = 8       # سقف فهرست بعد از افزودن نتیجهٔ جستجوی کوتاه‌شده
+VARIANT_DETAIL_RESULTS = 3   # چند نتیجهٔ اول، موجودیِ مدل‌هایشان هم خوانده شود
 
 # Expiry/shelf-life facts hide in prose and attributes; surface them explicitly
 # so they are never lost to description truncation. (Persian stores write e.g.
@@ -81,6 +82,9 @@ def availability_summary(product: dict, *, quantity: bool = True) -> str:
 class ToolContext:
     conversation_id: int
     intent: str = ""
+    # پیام خود مشتری: ابزار باید بداند سؤال دربارهٔ کدام مدل است، وگرنه فقط
+    # موجودیِ کل آگهی را برمی‌گرداند و «رایحهٔ شکلات موجوده؟» جواب غلط می‌گیرد
+    text: str = ""
     product_slug: str = ""
     page_url: str = ""
     cart: dict = field(default_factory=dict)
@@ -420,6 +424,51 @@ async def _pick_by_category(candidates: list[dict], count: int, matches: dict) -
     return picks
 
 
+def _variant_name(variant: dict | None) -> str:
+    return "، ".join(str(v) for v in ((variant or {}).get("attributes") or {}).values())
+
+
+def _significant_words(text: str) -> set[str]:
+    return {w for w in persian.normalize(text).split() if len(w) >= 3}
+
+
+def _requested_variant(query: str, variants: list[dict]) -> dict | None:
+    """مدلی (رایحه/رنگ/شماره) که مشتری اسمش را برده.
+
+    «رایحهٔ شکلات کی شارژ می‌شود؟» سؤال دربارهٔ یک مدل است، ولی موجودیِ آگهی
+    مدل‌ها را با هم قاطی می‌کند. بدون این تطبیق جواب «موجود است» می‌شود — همان
+    چیزی که به مشتری گفتیم در حالی که آن رایحه صفر بود.
+
+    تطبیق سرِ واژه است نه دقیق، چون مشتری «شکلات» می‌گوید و مدل «کیک شکلات» است
+    و «دونات» در برابر «دوناتی».
+    """
+    asked = _significant_words(query)
+    for variant in variants:
+        values = _significant_words(_variant_name(variant))
+        if any(v.startswith(a) or a.startswith(v) for v in values for a in asked):
+            return variant
+    return None
+
+
+def asked_variant_note(query: str, product: dict) -> str:
+    """اگر سؤال دربارهٔ مدلی است که موجود نیست، همان را صریح به مدل بگو.
+
+    بدون این، جواب به قضاوت مدل و اعتبارسنج سپرده می‌شد: آگهی [موجود] است و مدلِ
+    پرسیده‌شده [ناموجود]، و نتیجه گاهی «بله موجود است» می‌شد — همان چیزی که به
+    مشتری گفتیم و نبود.
+    """
+    variation = _requested_variant(query, product.get("variations") or [])
+    if not variation or (variation.get("stock_status") or "") == "instock":
+        return ""
+    in_stock = [_variation_label(v) for v in product.get("variations") or []
+                if (v.get("stock_status") or "") == "instock"]
+    return (f"\nتوجه: مشتری دربارهٔ «{_variation_label(variation)}» پرسیده و این مدل"
+            " [ناموجود] است، هرچند خود آگهی موجود است. در پاسخ **صریح** بگو همین"
+            " مدل الان موجود نیست"
+            + (f" و مدل‌های موجود را نام ببر: {'، '.join(in_stock)}." if in_stock else ".")
+            + " نگو این مدل موجود است.")
+
+
 def _title_tokens(name: str) -> set[str]:
     return set(re.sub(r"[A-Za-z0-9(\-–—|]+", " ", (name or "").replace("‌", " ")).split())
 
@@ -518,16 +567,35 @@ def build_tools(ctx: ToolContext) -> list[StructuredTool]:
             return "هیچ محصولی با این عبارت در غرفهٔ باسلام پیدا نشد."
         # available first — the customer is shopping, not auditing the catalogue
         results.sort(key=lambda p: not is_available(p))
+        # فهرست غرفه مدل‌ها را ندارد، پس «[موجود]» اینجا یعنی خودِ آگهی — و آگهیِ
+        # «کره بدن در پنج رایحه» موجود است حتی وقتی رایحهٔ شکلاتش صفر باشد. همین
+        # باعث شد به مشتری بگوییم رایحه‌ای که نداریم موجود است. خودِ آگهی مدل‌ها را
+        # دارد و پل کشش می‌کند (چند میلی‌ثانیه)، پس نتیجه‌های اول را کامل می‌کنیم.
+        for p in results[:VARIANT_DETAIL_RESULTS]:
+            detailed = await basalam_client.product(p.get("basalam_id") or p["id"])
+            if detailed and detailed.get("variants"):
+                p.update(basalam_overlay.overlay(p, detailed) or {})
         lines = []
-        for p in results:
+        for index, p in enumerate(results):
             price = f"{p['price']:,.0f} تومان" if p.get("price") else "قیمت ثبت نشده"
             # availability first and bracketed: readers (model and validator both)
             # missed it when it trailed a long line
-            stock = "[موجود]" if is_available(p) else "[ناموجود]"
+            stock = f"[{availability_summary(p, quantity=False)}]"
             line = f"- id={p['id']} | {stock} {p['name']} | {price}"
             if p.get("summary"):
                 line += f"\n  توضیح: {p['summary'][:SEARCH_SUMMARY_CHARS]}"
+            # مدل‌ها فقط برای نتیجهٔ اول، وگرنه یک جستجو ده‌ها سطر می‌شود
+            if index == 0:
+                for v in p.get("variations") or []:
+                    mark = "[موجود]" if (v.get("stock_status") or "") == "instock" else "[ناموجود]"
+                    line += f"\n    {mark} {_variation_label(v)}"
             lines.append(line)
+        note = asked_variant_note(ctx.text, results[0])
+        if note:
+            lines.append(note.strip())
+        lines.append("«[موجود]» جلوی هر آگهی یعنی کل آگهی، نه یک مدل. اگر مدل‌های"
+                     " نتیجهٔ اول بالا آمده، موجودیِ همان مدل را از همان‌جا بگو؛"
+                     " برای مدل‌های آگهی‌های دیگر get_product_details را بزن.")
         if widened:
             lines.append(f"نتیجهٔ جستجوی کوتاه‌ترِ «{widened}» هم به این فهرست اضافه شد،"
                          " چون عبارت کامل همهٔ آگهی‌های همان کالا (مثلاً بستهٔ همان محصول)"
@@ -605,7 +673,7 @@ def build_tools(ctx: ToolContext) -> list[StructuredTool]:
                     " اسم همان محصول را با search_products جستجو کن.")
         _record(ctx, "get_product_details", {"product_id": product_id}, True,
                 product.get("name", ""))
-        body = format_product(product)
+        body = format_product(product) + asked_variant_note(ctx.text, product)
         siblings = await _sibling_listings(product)
         if siblings:
             body += ("\n\nآگهی‌های مرتبط در غرفه (تکی، بسته، عمده، حجم دیگر):\n"
@@ -869,6 +937,17 @@ def build_tools(ctx: ToolContext) -> list[StructuredTool]:
         ctx.data_outputs.append(out)
         return out
 
+    def _restock_out(body: str) -> str:
+        """خروجی این ابزار هم سند است و باید در data_outputs بنشیند.
+
+        بدون این، حلقهٔ کنترل ادعای «ناموجود است» را بی‌پشتوانه می‌دید، مدل را به
+        جستجوی سطحِ آگهی می‌فرستاد و همان‌جا «موجود» می‌گرفت — پاسخ درست وارونه
+        می‌شد و به مشتری می‌گفتیم رایحه‌ای که نداریم موجود است.
+        """
+        out = wrap_data("restock", body)
+        ctx.data_outputs.append(out)
+        return out
+
     async def ask_restock_date(product: str) -> str:
         """«کی شارژ می‌شود؟» — تاریخ شارژ هیچ‌جا ثبت نیست، فقط انبار می‌داند.
 
@@ -880,12 +959,38 @@ def build_tools(ctx: ToolContext) -> list[StructuredTool]:
         best = found[0] if found else None
 
         if best and best.get("available"):
+            # موجودیِ آگهی جواب سؤالِ یک مدل نیست: آگهی «کره بدن در پنج رایحه» موجود
+            # است چون دو رایحه‌اش هست، ولی «رایحهٔ شکلات» صفر است. فهرست جستجو مدل‌ها
+            # را ندارد، پس خود آگهی را می‌گیریم.
+            detailed = await basalam_client.product(best["id"]) or best
+            variants = detailed.get("variants") or []
+            variant = _requested_variant(product, variants)
+            if variant and not (variant.get("stock") or 0):
+                in_stock = [_variant_name(v) for v in variants if (v.get("stock") or 0)]
+                ctx.handoff_requested = RESTOCK
+                _record(ctx, "ask_restock_date", {"product": product}, True,
+                        f"variant out of stock: {_variant_name(variant)}")
+                return _restock_out((
+                    # «[ناموجود]» عمداً عین سطرهای جستجو و جزئیات است: حلقهٔ کنترل،
+                    # ادعای ناموجودی بدون همین نشانه را «بی‌سند» می‌گیرد و پاسخ درست
+                    # را وادار به عقب‌نشینی می‌کند — دقیقاً همان اتفاقی که افتاد.
+                    f"وضعیت موجودی: ناموجود — [ناموجود] مدل «{_variant_name(variant)}»"
+                    f" از آگهی «{best.get('title')}»"
+                    " (خودِ آگهی موجود است، ولی این مدلش نه).\n"
+                    + (f"مدل‌های موجود همین آگهی: {'، '.join(in_stock)}\n" if in_stock else "")
+                    + f"سؤال زمان شارژ «{product}» برای همکار انسانی فرستاده شد.\n"
+                    "به مشتری بگو همین مدل الان ناموجود است، مدل‌های موجود را نام ببر،"
+                    " و بگو گفتگو را به همکارت منتقل می‌کنی تا زمان شارژ را بپرسند."
+                    " تاریخ از خودت نساز."
+                ))
             _record(ctx, "ask_restock_date", {"product": product}, False,
-                    f"in stock: {best.get('title', '')}")
+                    f"in stock: {_variant_name(variant) or best.get('title', '')}")
             price = best.get("price_toman")
-            return wrap_data("restock", (
+            return _restock_out((
                 f"این محصول همین الان در غرفه **موجود** است: {best.get('title')}"
-                + (f" — {price:,} تومان" if price else "") + "\n"
+                + (f" — {price:,} تومان" if price else "")
+                + (f"\nمدلی که مشتری پرسید («{_variant_name(variant)}») موجود است."
+                   if variant else "") + "\n"
                 "پس سؤال زمان شارژ موضوعیت ندارد و گفتگو به همکار منتقل نشد."
                 " به مشتری بگو موجود است و می‌تواند همین حالا سفارش بدهد."
                 " **هرگز نگو ناموجود است.**"
@@ -898,7 +1003,7 @@ def build_tools(ctx: ToolContext) -> list[StructuredTool]:
             _record(ctx, "ask_restock_date", {"product": product}, False,
                     f"alternative listing: {alternative.get('id')}")
             price = alternative.get("price_toman")
-            return wrap_data("restock", (
+            return _restock_out((
                 f"وضعیت موجودی: ناموجود ({product})\n"
                 f"ولی همین کالا با آگهی دیگری در غرفه موجود است: id={alternative.get('id')}"
                 f" | {alternative.get('title')}"
@@ -910,7 +1015,7 @@ def build_tools(ctx: ToolContext) -> list[StructuredTool]:
 
         ctx.handoff_requested = RESTOCK
         _record(ctx, "ask_restock_date", {"product": product}, True, product)
-        return wrap_data("restock", (
+        return _restock_out((
             # بررسی شد و واقعاً ناموجود است — همین خط سند ادعای ناموجودی است
             f"وضعیت موجودی: ناموجود ({product})\n"
             f"سؤال زمان شارژ «{product}» برای همکار انسانی فرستاده شد.\n"
